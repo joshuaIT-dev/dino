@@ -156,6 +156,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
    MAP  horizontal sliding worlds (Geometry-Dash style)
    ========================================================= */
 #s-map{flex-direction:column;align-items:stretch;height:100vh;overflow:hidden}
+.map-slider-wrap{touch-action:pan-y;user-select:none} 
 .map-topbar{width:100%;background:var(--panel);border-bottom:2px solid var(--border);padding:8px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:100}
 .map-title-txt{font-family:var(--px);font-size:13px;color:var(--yellow)}
 .map-attr-row{display:flex;gap:12px;font-size:17px;color:var(--dim)}
