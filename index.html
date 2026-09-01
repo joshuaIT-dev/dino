@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dino Quiz Battle</title>
-<link rel="stylesheet" href="dino.css">
+<link rel="stylesheet" href="/dino.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 </head>
@@ -22,7 +22,7 @@
   <div class="title-hero">
     <div class="title-dino" id="title-dino"></div>
     <div class="game-title">DINO<br>QUIZ BATTLE</div>
-    <div class="sub-title">50 LEVELS &middot; 5 WORLDS</div>
+    <div class="sub-title">125 BATTLES &middot; 5 WORLDS</div>
   </div>
 
   <div class="title-actions">
@@ -119,7 +119,7 @@
 <!-- DIFF -->
 <div id="s-diff" class="screen">
   <div style="font-family:var(--px);font-size:10px;color:var(--yellow)">SELECT DIFFICULTY</div>
-  <div style="font-size:16px;color:var(--dim);text-align:center">10 stages × 5 levels — Boss on Stage 5 &amp; 10</div>
+    <div style="font-size:16px;color:var(--dim);text-align:center">25 stages × 5 levels — mini-boss every 5th level</div>
   <div class="diff-cards">
     <div class="diff-card easy" onclick="startGame('easy')">
       <div class="diff-icon"><i data-lucide="leaf"></i></div><div class="diff-name">EASY</div>
@@ -394,7 +394,7 @@
   <div class="modal-box" style="max-width:600px;border-color:var(--purple);box-shadow:0 0 40px rgba(176,106,255,.2)">
     <div class="modal-title" style="color:var(--purple)">POWERUP GUIDE</div>
     <div class="modal-sub">Pick 5 for your run. Use them in battle!</div>
-    <div id="pu-guide-list" style="width:100%;display:grid;grid-template-columns:1fr;gap:6px;max-height:60vh;overflow-y:auto"></div>
+        <div id="pu-guide-list" style="width:100%;max-height:60vh;overflow-y:auto"></div>
     <button class="pbtn sm" style="color:var(--dim);border-color:var(--border)" onclick="closeModal('pu-guide-modal')"><i data-lucide="x"></i> CLOSE</button>
   </div>
 </div>
