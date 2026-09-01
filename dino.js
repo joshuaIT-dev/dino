@@ -237,7 +237,8 @@ const STAGES=[
       {lv:5,sub:'Time Devourer',  hp:5500,atk:[410,635],attr:{hp:320,atk:54,res:32},mini:true},
     ],
     spFn:g=>{if(!g.bossSpecialFired&&g.bossHP/g.bossMaxHP*100<=50){g.bossSpecialFired=true;g.activeEffects.push({type:'playerSlowed',turns:3});renderEffects();setMsg('🌀 TIME DEVOURER distorts your timeline! You are slowed for 3 turns!','var(--cyan)');}}},
-  {name:'NEBULA GRAVEYARD',icon:'🪦',sprIdx:16,world:4,isBoss:false,
+  {
+    name:'NEBULA GRAVEYARD',icon:'🪦',sprIdx:16,world:4,isBoss:false,
     passive:{label:'🪦 Cosmic Decay',desc:'Immune Poison · Reduces player Max HP by 2% each attack'},res:{poison:0},
     levels:[
       {lv:1,sub:'Dust Wraith',    hp:4800,atk:[350,550],attr:{hp:260,atk:45,res:25}},
@@ -246,8 +247,16 @@ const STAGES=[
       {lv:4,sub:'Eclipsed Titan', hp:6300,atk:[470,720],attr:{hp:340,atk:60,res:32}},
       {lv:5,sub:'Astral Reaper',  hp:7000,atk:[520,795],attr:{hp:380,atk:68,res:36},mini:true},
     ],
-    spFn:g=>{if(g.bossAtkCounter%3===0&&g.bossAtkCounter>0){g.playerMaxHP=Math.max(100,g.playerMaxHP-50);if(g.playerHP>g.playerMaxHP)g.playerHP=g.playerMaxHP;setMsg('🪦 ASTRAL REAPER rots your life force! Permanent -50 Max HP!','var(--grey)');}}},
-  {name:'QUANTUM MATRIX',icon:'🔮',sprIdx:17,world:4,isBoss:false,
+    spFn:g=>{if(g.bossAtkCounter%3===0&&g.bossAtkCounter>0){
+      const raw=Math.min(CAPS.hpMax,500+g.pHP);
+      const loss=Math.max(50,Math.round(raw*0.02));
+      g.hpPenalty=(g.hpPenalty||0)+loss;
+      capPlayerStats();
+      if(g.playerHP>g.playerMaxHP)g.playerHP=g.playerMaxHP;
+      setMsg(`🪦 ASTRAL REAPER rots your life force! Permanent -${loss} Max HP!`,'var(--grey)');
+      updateBars();}}},
+  {
+    name:'QUANTUM MATRIX',icon:'🔮',sprIdx:17,world:4,isBoss:false,
     passive:{label:'🔮 Glitch Shield',desc:'35% chance to completely evade player skills'},res:{halfhp:0.2},
     levels:[
       {lv:1,sub:'Data Shard',     hp:5400,atk:[400,620],attr:{hp:300,atk:50,res:28}},
@@ -257,7 +266,8 @@ const STAGES=[
       {lv:5,sub:'Matrix Overlord',hp:7800,atk:[590,900],attr:{hp:440,atk:74,res:40},mini:true},
     ],
     spFn:g=>{if(!g.bossSpecialFired&&g.bossHP/g.bossMaxHP*100<=60){g.bossSpecialFired=true;const keys=Object.keys(g.inv).filter(k=>g.inv[k]>0);if(keys.length>0){const target=keys[Math.floor(Math.random()*keys.length)];g.inv[target]=0;renderInventory();setMsg('🔮 MATRIX OVERLORD reformats reality! One of your item stacks was erased!','var(--purple)');}}}},
-  {name:'STARLIGHT FORGE',icon:'☀️',sprIdx:18,world:4,isBoss:false,
+  {
+    name:'STARLIGHT FORGE',icon:'☀️',sprIdx:18,world:4,isBoss:false,
     passive:{label:'☀️ Solar Radiance',desc:'Immune Burn · Converts 20% of taken dmg into heal'},res:{burn:0},
     levels:[
       {lv:1,sub:'Solar Flare',    hp:6200,atk:[460,710],attr:{hp:360,atk:58,res:32}},
@@ -378,8 +388,246 @@ const PLAYER_PASSIVES=[
   {label:'🔥 Battle Aura',desc:'+14 dmg + heal 6 HP on correct'},
   {label:'🌟 Heroic Soul',desc:'+20 dmg, 9 HP heal, 15% crit ×2.5'},
 ];
+
+/* ══════════════════════════════════════════════════════════════════
+   BOSS ATTRIBUTES — owned on boss kill, equip 1–2 per world,
+   chosen from the lobby, locked while a world is in progress.
+   ══════════════════════════════════════════════════════════════════ */
+const BOSS_ATTRS=[
+  {id:'flamearmor',     si:4,  world:1, icon:'🔥', name:'Flame Armor',      tier:'RARE',
+   desc:'Immune to Burn · take 12% less damage',
+   fx:{dr:.12, immune:['burn']}},
+  {id:'omegaforce',     si:9,  world:2, icon:'🌟', name:'Omega Force',      tier:'LEGEND',
+   desc:'+15% ATK · 50% resistance to all status/DoT',
+   fx:{atkMult:1.15, dotRes:.50}},
+  {id:'astralbarrier',  si:14, world:3, icon:'🌌', name:'Astral Barrier',   tier:'EPIC',
+   desc:'Reflect 18% of damage taken · 8% dodge',
+   fx:{thorns:.18, dodge:.08}},
+  {id:'eventhorizon',   si:19, world:4, icon:'🕳️', name:'Event Horizon',    tier:'EPIC',
+   desc:'Regen 3% max HP per turn · +15% healing',
+   fx:{regen:.03, healMult:1.15}},
+  {id:'ironcreator',    si:20, world:5, icon:'🛠️', name:'Iron Creator',     tier:'LEGEND',
+   desc:'Take 15% less damage · reflect 10%',
+   fx:{dr:.15, thorns:.10}},
+  {id:'infiniteloop',   si:21, world:5, icon:'⏳', name:'Infinite Loop',    tier:'LEGEND',
+   desc:'Immune to Paralyze & Freeze · +2s answer time',
+   fx:{immune:['paralyze','freeze','slowed'], timeBonus:2}},
+  {id:'voidmadness',    si:22, world:5, icon:'👁️', name:'Void Madness',     tier:'LEGEND',
+   desc:'12% dodge · lifesteal 10% of damage dealt',
+   fx:{dodge:.12, lifesteal:.10}},
+  {id:'celestialshield',si:23, world:5, icon:'💫', name:'Celestial Shield', tier:'MYTHIC',
+   desc:'80% status resistance · take 10% less damage',
+   fx:{dotRes:.80, dr:.10}},
+  {id:'alphaomega',     si:24, world:5, icon:'👑', name:'Alpha & Omega',    tier:'MYTHIC',
+   desc:'+25% ATK · +25% healing · 10% dodge',
+   fx:{atkMult:1.25, healMult:1.25, dodge:.10}},
+];
+const BOSS_MULT={
+  4 :{atk:1.2, icon:'💥', tier:'RARE',  col:'--orange',text:'EMBER KING DEFEATED! ATK ×1.2 permanent!'},
+  9 :{all:1.5, icon:'🌟', tier:'LEGEND',col:'--yellow',text:'OMEGA REX SLAIN! All stats ×1.5!'},
+  14:{all:1.4, icon:'🌌', tier:'EPIC',  col:'--purple',text:'COSMOS PRIME DEFEATED! All stats ×1.4!'},
+  19:{all:1.4, icon:'🕳️', tier:'EPIC',  col:'--cyan',  text:'SINGULARITY ALPHA DEFEATED! All stats ×1.4!'},
+  20:{all:1.3, icon:'🛠️', tier:'LEGEND',col:'--orange',text:'VULCAN DEFEATED! All stats ×1.3!'},
+  21:{all:1.3, icon:'⏳', tier:'LEGEND',col:'--cyan',  text:'CHRONOS DEFEATED! All stats ×1.3!'},
+  22:{all:1.3, icon:'🐙', tier:'LEGEND',col:'--purple',text:'CTHULHU LEGACY DEFEATED! All stats ×1.3!'},
+  23:{all:1.3, icon:'💫', tier:'MYTHIC',col:'--pink',  text:'AMATERASU DEFEATED! All stats ×1.3!'},
+  24:{all:1.3, icon:'👑', tier:'MYTHIC',col:'--yellow',text:'END OF REALITY CONQUERED!'},
+};
+
+const ATTR_BY_ID=Object.fromEntries(BOSS_ATTRS.map(a=>[a.id,a]));
+const ATTR_BY_SI=Object.fromEntries(BOSS_ATTRS.map(a=>[a.si,a]));
+
+/* ── slots & lock rules ── */
+function attrSlots(){ return (G.stagesCleared>=15)?2:1; }        // 2nd slot after World 3
+function worldOfStage(si){ return (STAGES[si]&&STAGES[si].world)||1; }
+function worldBossStage(w){ return w*5-1; }                       // 4, 9, 14, 19, 24
+function worldCleared(w){ return ((G.levelsCleared||[])[worldBossStage(w)]||0)>=5; }
+function attrsAreLocked(){ const w=G.attrLockedWorld||0; return w?!worldCleared(w):false; }
+function lockAttrsForWorld(si){
+  const w=worldOfStage(si);
+  if(!worldCleared(w))G.attrLockedWorld=w;   // entered an unfinished world → frozen
+}
+function normalizeAttrs(){
+  G.attrsOwned=(G.attrsOwned||[]).filter(id=>ATTR_BY_ID[id]);
+  G.attrsEquipped=(G.attrsEquipped||[]).filter(id=>G.attrsOwned.includes(id)).slice(0,attrSlots());
+}
+function grantBossAttr(si){
+  const a=ATTR_BY_SI[si]; if(!a)return null;
+  G.attrsOwned=G.attrsOwned||[]; G.attrsEquipped=G.attrsEquipped||[];
+  if(!G.attrsOwned.includes(a.id))G.attrsOwned.push(a.id);
+  if(si===worldBossStage(worldOfStage(si))||STAGES[si].isBoss)G.attrLockedWorld=0; // world done → re-pick allowed
+  if(G.attrsEquipped.length<attrSlots()&&!G.attrsEquipped.includes(a.id))G.attrsEquipped.push(a.id);
+  normalizeAttrs();
+  return a;
+}
+
+/* ── combat resolution ── */
+function attrFX(){
+  const f={dodge:0,dr:0,thorns:0,lifesteal:0,regen:0,dotRes:0,timeBonus:0,atkMult:1,healMult:1,immune:{}};
+  (G.attrsEquipped||[]).forEach(id=>{
+    const a=ATTR_BY_ID[id]; if(!a)return; const x=a.fx||{};
+    f.dodge+=x.dodge||0; f.dr+=x.dr||0; f.thorns+=x.thorns||0;
+    f.lifesteal+=x.lifesteal||0; f.regen+=x.regen||0;
+    f.dotRes+=x.dotRes||0; f.timeBonus+=x.timeBonus||0;
+    f.atkMult*=x.atkMult||1; f.healMult*=x.healMult||1;
+    (x.immune||[]).forEach(k=>f.immune[k]=true);
+  });
+  f.dodge=Math.min(.30,f.dodge); f.dr=Math.min(.30,f.dr);
+  f.thorns=Math.min(.30,f.thorns); f.dotRes=Math.min(.80,f.dotRes);
+  return f;
+}
+function attrIncoming(dmg){
+  const f=attrFX();
+  if(Math.random()<f.dodge)return{dmg:0,dodged:true,reflect:0};
+  const out=Math.max(1,Math.round(dmg*(1-f.dr)));
+  return{dmg:out,dodged:false,reflect:Math.round(out*f.thorns)};
+}
+function attrImmune(kind){ return !!attrFX().immune[kind]; }
+function attrDotScale(){ return 1-attrFX().dotRes; }
+
+/* ── lobby UI ── */
+function _attrCSS(){
+  if(document.getElementById('attr-css'))return;
+  const s=document.createElement('style'); s.id='attr-css';
+  s.textContent=`
+  .attr-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 10px;padding:8px 10px;
+    border:1px solid rgba(255,255,255,.14);border-radius:12px;background:rgba(0,0,0,.35)}
+  .attr-bar .ab-lbl{font-size:10px;letter-spacing:1px;opacity:.65}
+  .ab-slot{display:flex;align-items:center;gap:5px;font-size:11px;padding:4px 8px;border-radius:9px;
+    border:1px dashed rgba(255,255,255,.25);background:rgba(255,255,255,.05)}
+  .ab-slot.filled{border-style:solid;border-color:var(--yellow,#f5c542);color:var(--yellow,#f5c542)}
+  .ab-btn{margin-left:auto;font-size:11px;font-weight:700;letter-spacing:.5px;padding:6px 12px;
+    border-radius:9px;border:1px solid var(--yellow,#f5c542);color:#111;background:var(--yellow,#f5c542);cursor:pointer}
+  .ab-btn[disabled]{opacity:.4;cursor:not-allowed;background:transparent;color:var(--yellow,#f5c542)}
+  #attr-modal{position:fixed;inset:0;z-index:9000;display:none;align-items:center;justify-content:center;
+    background:rgba(0,0,0,.78);padding:16px}
+  #attr-modal.on{display:flex}
+  .am-box{width:100%;max-width:420px;max-height:82vh;overflow:auto;border-radius:16px;padding:16px;
+    background:#14161f;border:1px solid rgba(255,255,255,.15)}
+  .am-title{font-size:14px;font-weight:800;letter-spacing:1px;margin-bottom:2px}
+  .am-sub{font-size:11px;opacity:.65;margin-bottom:12px}
+  .am-item{display:flex;gap:10px;align-items:flex-start;padding:10px;margin-bottom:8px;border-radius:12px;
+    border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);cursor:pointer}
+  .am-item.on{border-color:var(--yellow,#f5c542);background:rgba(245,197,66,.12)}
+  .am-item.lockedout{opacity:.35;cursor:not-allowed}
+  .am-ic{font-size:20px;line-height:1}
+  .am-n{font-size:12px;font-weight:700}
+  .am-d{font-size:11px;opacity:.75;margin-top:2px}
+  .am-t{margin-left:auto;font-size:9px;letter-spacing:1px;opacity:.8}
+  .am-close{width:100%;margin-top:6px;padding:10px;border-radius:11px;font-size:12px;font-weight:700;
+    border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.07);color:#fff;cursor:pointer}
+
+    /* ── FIX 4b: cap the enemy-passive CARD, not just the text ── */
+  #pp-boss{display:block;margin:0;text-align:left;max-width:100%;min-width:0;
+    font-size:clamp(9px,1.3vw,11px);line-height:1.3;
+    white-space:normal;overflow-wrap:anywhere;opacity:.85;
+    max-height:52px;overflow-y:auto;scrollbar-width:thin}
+  .pp-cap{max-width:300px!important;min-width:0!important;flex:0 1 300px!important}
+  .pp-cap *{min-width:0}
+  @media(min-width:1000px){.pp-cap{max-width:360px!important;flex:0 1 360px!important}}
+  @media(max-width:600px){.pp-cap{max-width:100%!important;flex:1 1 100%!important}
+    #pp-boss{max-height:44px}}
+
+
+  /* ── FIX 5: collapsible attribute bar ── */
+  .attr-bar{padding:6px 8px;margin:6px 10px}
+  .ab-toggle{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;
+    letter-spacing:.5px;padding:5px 10px;border-radius:9px;cursor:pointer;
+    border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.06);color:#fff}
+  .ab-caret{display:inline-block;transition:transform .15s}
+  .attr-bar.open .ab-caret{transform:rotate(180deg)}
+  .ab-body{display:none;width:100%;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
+  .attr-bar.open .ab-body{display:flex}
+  .ab-mini-ic{font-size:14px;line-height:1}`;
+  document.head.appendChild(s);
+}
+
+function capBossPanel(){
+  const e=document.getElementById('pp-boss');
+  if(!e||!e.parentElement)return;
+  e.parentElement.classList.add('pp-cap');
+}
+
+
+function renderAttrBar(){
+  if(typeof G==='undefined'||!G||!G.diff)return;
+  _attrCSS(); normalizeAttrs();
+  const host=document.getElementById('s-map')||document.getElementById('s-home');
+  if(!host)return;
+  let bar=document.getElementById('attr-bar');
+  if(!bar){bar=document.createElement('div');bar.id='attr-bar';bar.className='attr-bar';
+           host.insertBefore(bar,host.firstChild);}
+  const wasOpen=bar.classList.contains('open');
+  const owned=(G.attrsOwned||[]).length,eq=G.attrsEquipped||[],n=attrSlots(),locked=attrsAreLocked();
+  const icons=eq.length?eq.map(id=>(ATTR_BY_ID[id]||{}).icon||'').join(' '):'—';
+  const head=`<button class="ab-toggle" onclick="toggleAttrBar()">
+      <span class="ab-mini-ic">${owned?icons:'🔒'}</span>
+      <span>ATTR ${eq.length}/${n}</span>
+      <span class="ab-caret">▾</span></button>`;
+  let body;
+  if(!owned){
+    body=`<span class="ab-slot">Defeat a world boss to earn one</span>`;
+  }else{
+    let slots='';
+    for(let i=0;i<n;i++){
+      const a=ATTR_BY_ID[eq[i]];
+      slots+=a?`<span class="ab-slot filled">${a.icon} ${a.name}</span>`
+              :`<span class="ab-slot">— empty slot —</span>`;
+    }
+    body=slots+`<button class="ab-btn" ${locked?'disabled':''} onclick="openAttrModal()">
+        ${locked?`🔒 WORLD ${G.attrLockedWorld}`:'CHOOSE'}</button>`;
+  }
+  bar.innerHTML=head+`<div class="ab-body">${body}</div>`;
+  if(wasOpen)bar.classList.add('open');
+}
+function toggleAttrBar(){
+  const b=document.getElementById('attr-bar');
+  if(b)b.classList.toggle('open');
+}
+
+
+function openAttrModal(){
+  if(attrsAreLocked())return;
+  _attrCSS();
+  let m=document.getElementById('attr-modal');
+  if(!m){ m=document.createElement('div'); m.id='attr-modal';
+          m.innerHTML='<div class="am-box" id="am-box"></div>';
+          m.onclick=e=>{if(e.target===m)closeAttrModal();};
+          document.body.appendChild(m); }
+  renderAttrModal(); m.classList.add('on');
+}
+function closeAttrModal(){
+  const m=document.getElementById('attr-modal'); if(m)m.classList.remove('on');
+  renderAttrBar(); if(typeof saveGame==='function')saveGame();
+}
+function renderAttrModal(){
+  normalizeAttrs();
+  const n=attrSlots(),eq=G.attrsEquipped||[],owned=G.attrsOwned||[];
+  const rows=BOSS_ATTRS.filter(a=>owned.includes(a.id)).map(a=>{
+    const on=eq.includes(a.id);
+    const full=!on&&eq.length>=n;
+    return `<div class="am-item ${on?'on':''} ${full?'lockedout':''}" onclick="toggleAttrEquip('${a.id}')">
+      <span class="am-ic">${a.icon}</span>
+      <span><span class="am-n">${a.name}</span><div class="am-d">${a.desc}</div></span>
+      <span class="am-t">${on?'✔ EQUIPPED':a.tier}</span></div>`;
+  }).join('')||'<div class="am-d">No boss attributes owned yet.</div>';
+  document.getElementById('am-box').innerHTML=`
+    <div class="am-title">BOSS ATTRIBUTE LOADOUT</div>
+    <div class="am-sub">Equip up to ${n} · ${eq.length}/${n} used · locks when you enter the next world</div>
+    ${rows}
+    <button class="am-close" onclick="closeAttrModal()">DONE</button>`;
+}
+function toggleAttrEquip(id){
+  if(attrsAreLocked())return;
+  G.attrsEquipped=G.attrsEquipped||[];
+  const i=G.attrsEquipped.indexOf(id);
+  if(i>=0)G.attrsEquipped.splice(i,1);
+  else if(G.attrsEquipped.length<attrSlots())G.attrsEquipped.push(id);
+  renderAttrModal(); renderAttrBar();
+}
+
 /* ══ BALANCE LAYER ══ */
-const CAPS={hpMax:30000,atkMax:2500,resMax:300,resCurve:0.75};
+const CAPS={hpMax:36000,atkMax:16000,resMax:300,resCurve:0.75};
 const DIFF_MUL={easy:0.85,medium:1,hard:1.15};
 // one enemy hit, as a share of the player's Max HP
 const DMG_PCT={normal:[0.040,0.070],mini:[0.055,0.090],boss:[0.070,0.110]};
@@ -419,9 +667,12 @@ function capPlayerStats(){
   G.pHP=Math.min(G.pHP,CAPS.hpMax-500);
   G.pATK=Math.min(G.pATK,CAPS.atkMax);
   G.pRES=Math.min(G.pRES,CAPS.resMax);
-  G.playerMaxHP=Math.min(CAPS.hpMax,500+G.pHP);
+  const raw=Math.min(CAPS.hpMax,500+G.pHP);
+  G.hpPenalty=Math.min(G.hpPenalty||0,Math.floor(raw*0.40));
+  G.playerMaxHP=Math.max(100,raw-G.hpPenalty);
   G.playerHP=Math.min(G.playerHP,G.playerMaxHP);
 }
+
 function computeProgressStats(si,li){
   let pHP=0,pATK=0,pRES=0,stagesCleared=0;
   for(let s=0;s<si;s++){
@@ -454,6 +705,21 @@ const EFFECT_ICON_MAP={
 // small helper: returns an inline lucide <i> tag
 function luc(name,size=14){return `<i data-lucide="${name}" style="width:${size}px;height:${size}px;vertical-align:-3px"></i>`;}
 
+/* live description — real numbers for the current world */
+function puDesc(t){
+  const inRun=!!(G&&G.playerMaxHP);
+  if(!inRun)return PU[t].desc;
+  switch(t){
+    case 'heal':   return `+${healAmtFor()} HP (6% max HP)`;
+    case 'regen':  return `+${regenAmtFor()} HP/turn ×3`;
+    case 'poison': return `-${poisonAmtFor()}/turn ×4, shreds boss dodge`;
+    case 'burn':   return `-${burnAmtFor()}/turn ×3, -${Math.round(burnSuppressFor(tierOf(STAGES[G.curStage].levels[G.curLevel]),true)*100)}% enemy regen/lifesteal`;
+    case 'nuke':   return `Deal ${Math.floor(G.playerMaxHP*0.5)} dmg (50% your max HP)`;
+    case 'rage':   return `ATK×2 for 3 turns, -${rageCostFor()} HP/turn`;
+    default:       return PU[t].desc;
+  }
+}
+
 const PU_CATEGORIES=[
   {label:'OFFENSE',color:'var(--red)',types:['double','overload','burn','poison','halfhp','nuke','leech']},
   {label:'DEFENSE',color:'var(--teal)',types:['shield','barrier','mirror','freeze','paralyze','stun']},
@@ -461,29 +727,30 @@ const PU_CATEGORIES=[
 ];
 
 const PU={
-  heal:    {icon:'💚',name:'HEAL',    color:'var(--green)', border:'#4ecb71',desc:'+30 HP'},
-  double:  {icon:'⚡',name:'2× DMG',  color:'var(--yellow)',border:'#f5c842',desc:'Next hit ×2 (stacks multiply into one hit)'},
-  freeze:  {icon:'❄', name:'FREEZE',  color:'var(--blue)',  border:'#4a9eff',desc:'Skip turn + boss takes +20% dmg'},
-  poison:  {icon:'☠', name:'POISON',  color:'var(--purple)',border:'#b06aff',desc:'-12/turn×4, shreds boss dodge'},
-  shield:  {icon:'🛡',name:'SHIELD',  color:'var(--teal)',  border:'#2dd4c8',desc:'50% absorb, 3 hits'},
-  fiftyf:  {icon:'🎯',name:'50/50',   color:'var(--orange)',border:'#ff7a30',desc:'Remove 2 wrong'},
-  burn:    {icon:'🔥',name:'BURN',    color:'var(--orange)',border:'#ff7a30',desc:'-8/turn×3, blocks boss regen'},
-  halfhp:  {icon:'💀',name:'HALF HP', color:'var(--red)',   border:'#e84545',desc:'Halve Enemy HP'},
-  paralyze:{icon:'⚡',name:'PARALYZE',color:'var(--cyan)',  border:'#00e5ff',desc:'Skip turn, 30% to chain'},
-  revive:  {icon:'🍖',name:'REVIVE',  color:'var(--pink)',  border:'#ff6eb4',desc:'Auto-revive×1'},
-  regen:   {icon:'💉',name:'REGEN',    color:'var(--green)', border:'#4ecb71',desc:'+8 HP/turn×3'},
-  mirror:  {icon:'🪞',name:'MIRROR',   color:'var(--teal)',  border:'#2dd4c8',desc:'Reflect dmg back×1 (stacks multiply, still 1 use)'},
-  rage:    {icon:'😤',name:'RAGE',     color:'var(--red)',   border:'#e84545',desc:'ATK×2 for 3 turns, -5HP/turn'},
-  stun:    {icon:'💫',name:'STUN',     color:'var(--yellow)',border:'#f5c842',desc:'Guaranteed skip, ignores immunity'},
-  leech:   {icon:'🩸',name:'LEECH',    color:'var(--purple)',border:'#b06aff',desc:'Steal 8% of boss current HP'},
-  barrier: {icon:'🧱',name:'BARRIER',  color:'var(--blue)',  border:'#4a9eff',desc:'Block next 2 hits FULLY'},
-  divine:  {icon:'🌟',name:'DIVINE',  color:'var(--yellow)',border:'#f5c842',desc:'Full HP restore'},
-  overload:{icon:'⚡',name:'OVERLOAD',color:'var(--yellow)',border:'#f5c842',desc:'×3 dmg on next hit (stacks multiply, still 1 use), but next hit taken +20%'},
-  gamble:  {icon:'🎲',name:'GAMBLE',  color:'var(--pink)',  border:'#ff6eb4',desc:'Random powerful effect'},
-  nuke:    {icon:'💣',name:'NUKE',    color:'var(--red)',   border:'#e84545',desc:'Deal 50% of YOUR max HP as DMG'},
-  oracle:  {icon:'🔮',name:'ORACLE',  color:'var(--purple)',border:'#b06aff',desc:'Reveals correct answer'},
-  insight: {icon:'👁',name:'INSIGHT', color:'var(--blue)',  border:'#4a9eff',desc:'+30s to timer'},
+  heal:    {icon:'💚',name:'HEAL',    color:'var(--green)', border:'#4ecb71',desc:'Restore 6% of your max HP (min 30)'},
+  double:  {icon:'⚡',name:'2× DMG',  color:'var(--yellow)',border:'#f5c842',desc:'Next hit ×2 · stacks to ×16 (4 max)'},
+  freeze:  {icon:'❄', name:'FREEZE',  color:'var(--blue)',  border:'#4a9eff',desc:'Enemy skips 2 turns'},
+  poison:  {icon:'☠', name:'POISON',  color:'var(--purple)',border:'#b06aff',desc:'2.5% of enemy max HP/turn for 4 turns'},
+  shield:  {icon:'🛡',name:'SHIELD',  color:'var(--teal)',  border:'#2dd4c8',desc:'Absorb 50% of damage for 3 hits · stacks to 90%'},
+  fiftyf:  {icon:'🎯',name:'50/50',   color:'var(--orange)',border:'#ff7a30',desc:'Removes half of the remaining wrong answers'},
+  burn:    {icon:'🔥',name:'BURN',    color:'var(--orange)',border:'#ff7a30',desc:'1.8% of enemy max HP/turn ×3 · weakens enemy regen & lifesteal (much less on bosses)'},
+  halfhp:  {icon:'💀',name:'HALF HP', color:'var(--red)',   border:'#e84545',desc:'Cut enemy current HP in half (reduced by resistance)'},
+  paralyze:{icon:'⚡',name:'PARALYZE',color:'var(--cyan)',  border:'#00e5ff',desc:'Enemy skips 2 turns'},
+  revive:  {icon:'🍖',name:'REVIVE',  color:'var(--pink)',  border:'#ff6eb4',desc:'Auto-revives you once on death'},
+  regen:   {icon:'💉',name:'REGEN',   color:'var(--green)', border:'#4ecb71',desc:'+2.5% max HP/turn for 3 turns'},
+  mirror:  {icon:'🪞',name:'MIRROR',  color:'var(--teal)',  border:'#2dd4c8',desc:'Reflect the next hit back · stacks multiply, still 1 use'},
+  rage:    {icon:'😤',name:'RAGE',    color:'var(--red)',   border:'#e84545',desc:'ATK×2 for 3 turns, costs 1% max HP/turn'},
+  stun:    {icon:'💫',name:'STUN',    color:'var(--yellow)',border:'#f5c842',desc:'Enemy skips 1 turn · ignores immunity'},
+  leech:   {icon:'🩸',name:'LEECH',   color:'var(--purple)',border:'#b06aff',desc:'Steal 8% of enemy current HP and heal for it'},
+  barrier: {icon:'🧱',name:'BARRIER', color:'var(--blue)',  border:'#4a9eff',desc:'Block the next 2 hits fully · stacks to 6'},
+  divine:  {icon:'🌟',name:'DIVINE',  color:'var(--yellow)',border:'#f5c842',desc:'Restore to full HP'},
+  overload:{icon:'⚡',name:'OVERLOAD',color:'var(--yellow)',border:'#f5c842',desc:'Next hit ×3, but you take +20% on the next hit'},
+  gamble:  {icon:'🎲',name:'GAMBLE',  color:'var(--pink)',  border:'#ff6eb4',desc:'Instantly uses one random powerup (not revive)'},
+  nuke:    {icon:'💣',name:'NUKE',    color:'var(--red)',   border:'#e84545',desc:'Deal 50% of YOUR max HP as damage'},
+  oracle:  {icon:'🔮',name:'ORACLE',  color:'var(--purple)',border:'#b06aff',desc:'Highlights the correct answer'},
+  insight: {icon:'👁',name:'INSIGHT', color:'var(--blue)',  border:'#4a9eff',desc:'+30 seconds (Timed mode only)'},
 };
+
 
 const Q={
   easy:[
@@ -582,6 +849,7 @@ let _battleSession = 0;
 let _pendingRunMode = 'normal';
 let _pendingQuizPool = null;
 let G={};
+
 function freshState(diff){
   return {
     diff,timedMode:true,timerModeLocked:false,curStage:0,curLevel:0,stagesCleared:0,
@@ -591,6 +859,8 @@ function freshState(diff){
     pHP:0,pATK:0,pRES:0,playerMaxHP:500,playerHP:500,
     bossHP:0,bossMaxHP:0,
     bossSpecialFired:false,rageMult:1,bossAtkCounter:0,omegaRageTwo:false,
+    attrsOwned:[],attrsEquipped:[],attrLockedWorld:0,
+    hpPenalty:0,worldPicksDone:{},
     score:0,streak:0,combo:1,
     inv:Object.fromEntries(Object.keys(PU).map(k=>[k,0])),
     loadout:[],
@@ -703,8 +973,10 @@ _battleSession++; G._session=_battleSession;
   let bd=stg.passive.label+' — '+stg.passive.desc;
   const rk=Object.keys(stg.res||{});
   if(rk.length)bd+=' | RES: '+rk.map(k=>stg.res[k]===0?`${k.toUpperCase()}×IMM`:`${k.toUpperCase()} ${Math.round((1-stg.res[k])*100)}%↓`).join(', ');
+  if(typeof _attrCSS==='function')_attrCSS();
   document.getElementById('pp-boss').textContent=bd;
-  document.getElementById('stage-info').textContent=`${stg.name} — HP:${G.bossMaxHP} ATK:${lv.atk[0]}–${lv.atk[1]}`;
+  capBossPanel();
+  document.getElementById('stage-info').textContent=`${stg.name} — HP:${G.bossMaxHP} ATK:${G.bossAtkMin}–${G.bossAtkMax}`;
   const bc2=document.getElementById('battle-canvas');
   requestAnimationFrame(()=>{drawBattleBg(bc2,si);});
   document.getElementById('battle-content').classList.remove('walk-hidden');
@@ -785,8 +1057,10 @@ const PICK_TIERS={
   startup:{target:3,offer:8,refill:0,banner:'WORLD 1 LOADOUT — PICK 3'},
   w2:{target:1,offer:5,refill:2,banner:'WORLD 2 — ADD 1 POWERUP (+2 to every stack)'},
   w3:{target:1,offer:5,refill:2,banner:'WORLD 3 — ADD 1 POWERUP (+2 to every stack)'},
-  w5:{target:1,offer:5,refill:3,banner:'WORLD 5 — ADD 1 POWERUP (+3 to every stack)'},
+  w4:{target:1,offer:5,refill:3,banner:'WORLD 4 — ADD 1 POWERUP (+3 to every stack)'},
+  w5:{target:2,offer:6,refill:4,banner:'WORLD 5 — ADD 2 POWERUPS (+4 to every stack)'},
 };
+
 
 function startGame(diff){
   G=freshState(diff);
@@ -825,6 +1099,7 @@ function maybeWorldPick(nextSi,nextLi,afterFn){
   let key=null;
   if(world>=2 && !G.worldPicksDone.w2) key='w2';
   else if(world>=3 && !G.worldPicksDone.w3) key='w3';
+  else if(world>=4 && !G.worldPicksDone.w4) key='w4';
   else if(world>=5 && !G.worldPicksDone.w5) key='w5';
   if(key){
     G.worldPicksDone[key]=true;
@@ -854,8 +1129,10 @@ updateTimerToggleBtn();
   track.innerHTML='';
   const worldColors=['wl-1','wl-2','wl-3','wl-4','wl-5'];
   const worldNames=[
-    'WORLD 1  THE KNOWN LANDS','WORLD 2  THE DARK BEYOND',
-    'WORLD 3  THE ABYSS','WORLD 4  THE VOID FRONTIER',
+    'WORLD 1  THE KNOWN LANDS',
+    'WORLD 2  THE DARK BEYOND',
+    'WORLD 3  THE ABYSS',
+    'WORLD 4  THE VOID FRONTIER',
     'WORLD 5  THE CELESTIAL PANTHEON'
   ];
 
@@ -912,6 +1189,18 @@ updateTimerToggleBtn();
     track.appendChild(slide);
   }
 
+    // ── COMING SOON slide (after World 5) ──
+  const soon=document.createElement('div');
+  soon.className='map-slide';
+  soon.innerHTML=`<div class="world-label wl-soon">WORLD 6 &nbsp;???</div>
+    <div class="soon-wrap">
+      <div class="soon-orb">🔒</div>
+      <div class="soon-title">COMING SOON</div>
+      <div class="soon-sub">New worlds, new bosses, new attributes.<br>Finish WORLD 5 while you wait.</div>
+    </div>`;
+  track.appendChild(soon);
+
+
   // fill pips
   STAGES.forEach((stg,si)=>{
     const pipsEl=document.getElementById('pips-'+si);if(!pipsEl)return;
@@ -924,18 +1213,27 @@ updateTimerToggleBtn();
   });
 
   // dots
-  const dots=document.getElementById('map-dots');dots.innerHTML='';
-  for(let w=0;w<5;w++){
+    const dots=document.getElementById('map-dots');dots.innerHTML='';
+  for(let w=0;w<6;w++){
     const d=document.createElement('div');
-    const worldUnlocked=STAGES.some((s,i)=>s.world===w+1 && G.curStage>=i);
-    d.className='map-dot'+(w===_curWorld?' active':'')+(worldUnlocked?'':' locked');
+    const isSoon=(w===5);
+    const worldUnlocked=isSoon?(STAGES[G.curStage].world>=5)
+                              :STAGES.some((s,i)=>s.world===w+1&&G.curStage>=i);
+    d.className='map-dot'+(w===_curWorld?' active':'')+(worldUnlocked?'':' locked')+(isSoon?' soon':'');
     if(worldUnlocked)d.onclick=()=>goToWorld(w);
     dots.appendChild(d);
   }
 
+
   // jump to the world containing the current stage on first build
   _curWorld=STAGES[G.curStage].world-1;
   updateSlide();
+  renderAttrBar();
+}
+
+function maxSlide(){
+  const w=STAGES[G.curStage].world-1;   // 0-based world index
+  return w>=4?5:w;                      // reached World 5 → COMING SOON viewable
 }
 
 function updateSlide(){
@@ -943,20 +1241,20 @@ function updateSlide(){
   track.style.transform=`translateX(-${_curWorld*100}%)`;
   document.getElementById('map-prev').disabled=_curWorld<=0;
   // can't view worlds that are fully locked
-  const maxWorld=STAGES[G.curStage].world-1;
+  const maxWorld=maxSlide();
   document.getElementById('map-next').disabled=_curWorld>=maxWorld;
   document.querySelectorAll('.map-dot').forEach((d,i)=>d.classList.toggle('active',i===_curWorld));
 }
 
 function slideWorld(dir){
-  const maxWorld=STAGES[G.curStage].world-1;
+  const maxWorld=maxSlide();
   const next=_curWorld+dir;
   if(next<0||next>maxWorld)return;
   _curWorld=next;updateSlide();
 }
 
 function goToWorld(w){
-  const maxWorld=STAGES[G.curStage].world-1;
+  const maxWorld=maxSlide();
   if(w<0||w>maxWorld)return;
   _curWorld=w;updateSlide();
 }
@@ -1045,6 +1343,7 @@ let _walkId=null,_walkX=0;
 
 function playWalkInBattle(si,li,onDone){
   const stg=STAGES[si],lv=stg.levels[li];
+  normalizeAttrs(); lockAttrsForWorld(si);
   const worldIdx=stg.world-1,isBoss=!!(lv.boss||lv.mini||stg.isBoss);
   const layer=document.getElementById('walk-layer'),bc=document.getElementById('battle-content');
   layer.style.display='block';bc.classList.add('walk-hidden');
@@ -1081,6 +1380,7 @@ _battleSession++; G._session=_battleSession;
   G.inBattle=true;
   G.timerModeLocked=true;
   const stg=STAGES[si],lv=stg.levels[li];
+  normalizeAttrs(); lockAttrsForWorld(si);
   const isBoss=!!(lv.boss||lv.mini||stg.isBoss),worldIdx=stg.world-1;
   const calcHP=enemyHPFor(stg,lv,li);
   G.bossHP=calcHP;G.bossMaxHP=calcHP;
@@ -1102,7 +1402,8 @@ _battleSession++; G._session=_battleSession;
   let bd=stg.passive.label+' — '+stg.passive.desc;
   const rk=Object.keys(stg.res||{});
   if(rk.length)bd+=' | RES: '+rk.map(k=>stg.res[k]===0?`${k.toUpperCase()}×IMM`:`${k.toUpperCase()} ${Math.round((1-stg.res[k])*100)}%↓`).join(', ');
-  document.getElementById('pp-boss').textContent=stg.passive.label+' — '+stg.passive.desc;
+  if(typeof _attrCSS==='function')_attrCSS();
+  document.getElementById('pp-boss').textContent=bd;
   document.getElementById('stage-info').textContent=`${stg.name} — HP:${calcHP} ATK:${G.bossAtkMin}–${G.bossAtkMax}`;
   const bc2=document.getElementById('battle-canvas');
   requestAnimationFrame(()=>{drawBattleBg(bc2,si);});
@@ -1163,9 +1464,11 @@ function pickCustomQ(){
 
 function renderChoices(){
   const grid=document.getElementById('choices-grid'),lets=['A','B','C','D','E','F'];
-  grid.innerHTML='';
   const n=getChoiceCount();
-  grid.style.gridTemplateColumns=n===6?'1fr 1fr 1fr':'1fr 1fr';
+  grid.innerHTML='';
+  grid.style.removeProperty('grid-template-columns');
+  grid.classList.toggle('six', n===6);
+  grid.classList.toggle('four', n!==6);
   grid.classList.toggle('blinded',G.activeEffects.some(e=>e.type==='blindness'));
   G.currentQ.built.forEach((c,i)=>{
     const isPetrified=G.petrified&&G.petrified.includes(i);
@@ -1175,6 +1478,13 @@ function renderChoices(){
     btn.innerHTML=isPetrified?`<span class="c-letter">${lets[i]}</span>🪨 PETRIFIED`:`<span class="c-letter">${lets[i]}</span>${c}`;
     if(!isPetrified)btn.onclick=()=>onAnswer(c,btn,i);
     grid.appendChild(btn);
+  });
+    grid.querySelectorAll('.choice').forEach(b=>{
+    const len=((b.textContent||'').trim().length)-1;   // -1 for the A/B/C letter
+    b.classList.remove('len-m','len-l','len-x');
+    if(len>60)b.classList.add('len-x');
+    else if(len>36)b.classList.add('len-l');
+    else if(len>20)b.classList.add('len-m');
   });
 }
 
@@ -1201,8 +1511,10 @@ function startTimer(){
 function getTimerDur(){
   let d={easy:30,medium:20,hard:12}[G.diff]||20;
   if(G&&G.activeEffects&&G.activeEffects.some(e=>e.type==='playerSlowed'))d=Math.max(6,Math.round(d*0.6));
+  if(typeof attrFX==='function'&&G&&G.attrsEquipped)d+=attrFX().timeBonus||0;
   return d;
 }
+
 
 function nextQ(){
 if(G._session !== _battleSession) return;
@@ -1258,6 +1570,8 @@ function onAnswer(chosen,btnEl,idx){
     if(hasOver){dmg*=Math.pow(3,hasOver.stack||1);G.activeEffects=G.activeEffects.filter(e=>e!==hasOver);}
     dmg+=G.pATK;if(pIdx>=1)dmg+=10;if(pIdx>=2)dmg+=14;if(pIdx>=3)dmg+=20;
     let crit=false;if(pIdx>=3&&Math.random()<0.15){dmg*=2.5;crit=true;}
+    const _af=attrFX();
+    dmg*=_af.atkMult;
     dmg=Math.floor(dmg);
 
     const stg=STAGES[G.curStage];
@@ -1296,8 +1610,16 @@ function onAnswer(chosen,btnEl,idx){
     document.getElementById('sc-score').textContent=G.score;
     document.getElementById('g-score').textContent='SCORE:'+G.score;
 
-    let healAmt=0;if(pIdx===0)healAmt=5;else if(pIdx===2)healAmt=6;else if(pIdx>=3)healAmt=9;
-    if(healAmt>0)doHealAura(healAmt);
+    
+        let healAmt=0;if(pIdx===0)healAmt=5;else if(pIdx===2)healAmt=6;else if(pIdx>=3)healAmt=9;
+    healAmt=Math.round(healAmt*_af.healMult);
+    if(_af.lifesteal>0&&dmg>0)healAmt+=Math.round(dmg*_af.lifesteal);
+    if(healAmt>0){
+      const _b=G.playerHP;
+      G.playerHP=Math.min(G.playerMaxHP,G.playerHP+healAmt);
+      const _real=G.playerHP-_b;                  // clamp FIRST, then report
+      if(_real>0)spawnFloat(`+${_real}`,'var(--green)',false);
+    }
     updateBars();renderEffects();
 
     if(G.playerHP<=0){G.animLock=false;sfx.gameover();setTimeout(()=>endGame(false),400);return;}
@@ -1344,6 +1666,21 @@ function tryBreakControl(effType){
   }
   return false;
 }
+
+const BURN_SUPPRESS    ={normal:0.60,mini:0.35,boss:0.20};
+const BURN_SUPPRESS_CAP={normal:0.85,mini:0.60,boss:0.40};
+function burnSuppressFor(tier,assume){
+  const e=G.activeEffects&&G.activeEffects.find(x=>x.type==='bossBurn');
+  if(!e&&!assume)return 0;
+  const resBurn=((STAGES[G.curStage]||{}).res||{}).burn;
+  if(resBurn===0)return 0;                       // burn-immune enemy = no suppression
+  const stack=e?Math.max(1,e.stack||1):1;
+  const base=BURN_SUPPRESS[tier]||0.60;
+  let v=base+(stack-1)*base*0.25;                // extra stacks help a little
+  if(resBurn!=null)v*=resBurn;                   // burn-resistant enemies suppress less
+  return Math.min(BURN_SUPPRESS_CAP[tier]||0.85,v);
+}
+
 function bossAttacks(cb){
   if(G._session !== _battleSession) return;
   const stg=STAGES[G.curStage],lv=stg.levels[G.curLevel],pas=stg.pas||{};
@@ -1387,17 +1724,42 @@ function bossAttacks(cb){
 
   G.bossAtkCounter++;
   if(stg.spFn)stg.spFn(G);
-  const burning=G.activeEffects.some(e=>e.type==='bossBurn');
-  if(pas.regen&&!burning&&G.bossHP<G.bossMaxHP){
-    const h=Math.max(1,Math.round(G.bossMaxHP*pas.regen));
-    G.bossHP=Math.min(G.bossMaxHP,G.bossHP+h);
-    spawnFloat(`+${h}`,'var(--green)',true);
+  const tier=tierOf(lv);
+const bSup=burnSuppressFor(tier);
+    if(pas.regen&&G.bossHP<G.bossMaxHP){
+    let h=Math.max(1,Math.round(G.bossMaxHP*pas.regen));
+    h=Math.round(h*(1-bSup));
+    if(h>0){G.bossHP=Math.min(G.bossMaxHP,G.bossHP+h);spawnFloat(`+${h}`,'var(--green)',true);}
+  }
+
+
+    /* ── BOSS ATTRIBUTES: player regen per turn ── */
+  const _rg=attrFX().regen;
+  if(_rg>0&&G.playerHP<G.playerMaxHP){
+    const ph=Math.max(1,Math.round(G.playerMaxHP*_rg));
+    G.playerHP=Math.min(G.playerMaxHP,G.playerHP+ph);
+    spawnFloat(`+${ph}🕳️`,'var(--cyan)',false);
+  }
+
+  /* ── ENEMY ACCURACY: they can whiff, the same way you can dodge ── */
+  const MISS_CHANCE={normal:0.12,mini:0.09,boss:0.06};
+  if(Math.random()<(MISS_CHANCE[tier]||0.10)){
+    spawnFloat('MISS','var(--cyan)',false);
+    setMsg(`💨 ${lv.sub} lunges and MISSES completely!`,'var(--cyan)');
+    doAnim('boss-f','aL',()=>{if(cb)cb();});
+    return;
   }
 
   let dmg=Math.floor(Math.random()*(G.bossAtkMax-G.bossAtkMin+1))+G.bossAtkMin;
   dmg=Math.floor(dmg*(G.rageMult||1));
 
-  const tier=tierOf(lv);
+  /* ── MOMENTUM: 1st, 3rd, 5th, 7th… connected hit presses harder ── */
+  let momentum=0;
+  if(G.bossAtkCounter%2===1){
+    momentum=Math.min(0.60,0.10*Math.ceil(G.bossAtkCounter/2));
+    dmg=Math.floor(dmg*(1+momentum));
+  }
+
   let enemyCrit=false,truePen=false;
   if(Math.random()<(ENEMY_CRIT_CHANCE[tier]||0.08)){enemyCrit=true;dmg=Math.floor(dmg*ENEMY_CRIT_MULT);}
   if(Math.random()<(ENEMY_TRUEDMG_CHANCE[tier]||0.04))truePen=true;
@@ -1442,21 +1804,47 @@ function bossAttacks(cb){
     if(enemyCrit)tag+=' 💥CRIT!';
     if(truePen)tag+=' 🗡TRUE DMG!';
     if(vulnerable)tag+=' 💢EXPOSED!';
+    if(momentum>0)tag+=` ⚡MOMENTUM ×${(1+momentum).toFixed(1)}`;
     setMsg(`${lv.sub} strikes for ${dmg}!${tag}`,(enemyCrit||truePen)?'var(--red)':'var(--orange)');
   }
 
-  G.playerHP=Math.max(0,G.playerHP-dmg);
-  spawnFloat(`-${dmg}${enemyCrit?' CRIT':''}${truePen?' TRUE':''}`,(enemyCrit||truePen)?'var(--red)':'var(--orange)',false);sfx.hit();
-
-  if(pas.lifesteal&&!burning){
-    const h=Math.max(1,Math.round(dmg*pas.lifesteal));
-    G.bossHP=Math.min(G.bossMaxHP,G.bossHP+h);
-    spawnFloat(`+${h}🩸`,'var(--green)',true);
+  /* ── BOSS ATTRIBUTES: dodge / damage reduction ── */
+  const _ai=attrIncoming(dmg);
+  if(_ai.dodged){
+    dmg=0;
+    spawnFloat('DODGE','var(--cyan)',false);
+    setMsg('💨 DODGED! Your boss attribute negated the hit!','var(--cyan)');
+  }else{
+    dmg=_ai.dmg;
   }
+
+  const _hpBefore=G.playerHP;
+  G.playerHP=Math.max(0,G.playerHP-dmg);
+  const dmgTaken=_hpBefore-G.playerHP;
+
+  if(dmgTaken>0){
+    spawnFloat(`-${dmgTaken}${enemyCrit?' CRIT':''}${truePen?' TRUE':''}`,(enemyCrit||truePen)?'var(--red)':'var(--orange)',false);sfx.hit();
+  }
+
+  /* ── BOSS ATTRIBUTES: thorns / reflect ── */
+  if(_ai.reflect>0&&dmgTaken>0){
+    G.bossHP=Math.max(0,G.bossHP-_ai.reflect);
+    spawnFloat(`-${_ai.reflect}🌌`,'var(--purple)',true);
+  }
+
+  /* enemy lifesteal now uses HP ACTUALLY LOST, so shields/DR/dodge reduce it too */
+   if(pas.lifesteal&&dmgTaken>0){
+    let h=Math.round(dmgTaken*pas.lifesteal*(1-bSup));
+    if(h>0){G.bossHP=Math.min(G.bossMaxHP,G.bossHP+h);spawnFloat(`+${h}🩸`,'var(--green)',true);
+  }
+}
+
   if(G.playerHP<=0&&G.inv.revive>0){
     G.inv.revive--;G.playerHP=Math.max(1,Math.round(G.playerMaxHP*0.25));
     renderInventory();setMsg(`🍖 REVIVE! Back at ${G.playerHP} HP!`,'var(--pink)');sfx.powerup();
   }
+  if(G.bossHP<=0&&G.playerHP>0){updateBars();handleLevelWin();return;}
+
   doAnim('boss-f','aL',()=>{doAnim('player-f','aS',()=>{
     updateBars();
     if(G.playerHP<=0){sfx.gameover();setTimeout(()=>endGame(false),400);return;}
@@ -1467,18 +1855,48 @@ function bossAttacks(cb){
 
 
 function showShieldGlow(){const el=document.getElementById('player-spr');const gl=document.createElement('div');gl.className='shield-glow';el.appendChild(gl);setTimeout(()=>gl.remove(),900);}
-function doHealAura(amt){const el=document.getElementById('player-spr');const a=document.createElement('div');a.className='heal-aura';el.appendChild(a);const f=document.createElement('div');f.className='heal-float';f.textContent=`+${amt} HP`;el.appendChild(f);G.playerHP=Math.min(G.playerMaxHP,G.playerHP+amt);updateBars();setTimeout(()=>{a.remove();f.remove();},900);}
+function doHealAura(amt,label){
+  const el=document.getElementById('player-spr');
+  if(!el)return 0;
+
+  // clamp FIRST, then report only what actually went in
+  const before=G.playerHP;
+  G.playerHP=Math.min(G.playerMaxHP,G.playerHP+Math.max(0,amt||0));
+  const gained=G.playerHP-before;
+
+  const a=document.createElement('div');
+  a.className='heal-aura';
+  el.appendChild(a);
+
+  const f=document.createElement('div');
+  f.className='heal-float';
+  if(gained>0)   f.textContent=`+${gained} HP`;
+  else if(label) f.textContent=label;      // buff applied, no HP to gain
+  else           f.textContent='MAX HP';
+  el.appendChild(f);
+
+  updateBars();
+  setTimeout(()=>{a.remove();f.remove();},900);
+  return gained;                            // callers can use the real number
+}
 
 function tickEffects(){
   const res=STAGES[G.curStage].res||{};
+  const _af=attrFX();
+  const _dotScale=1-_af.dotRes;
   const managedElsewhere=new Set([
     'double','overload','mirror',
     'shield','freeze','paralyze','stun','barrier',
     'playerFreeze','playerParalyze','playerVulnerable'
   ]);
   G.activeEffects=G.activeEffects.filter(e=>{
+    /* ── BOSS ATTRIBUTES: hard immunities purge the effect ── */
+    if(e.type==='playerBurn'&&_af.immune.burn){spawnFloat('IMMUNE 🔥','var(--cyan)',false);return false;}
+    if(e.type==='playerParalyze'&&_af.immune.paralyze){spawnFloat('IMMUNE ⚡','var(--cyan)',false);return false;}
+    if(e.type==='playerFreeze'&&_af.immune.freeze){spawnFloat('IMMUNE ❄','var(--cyan)',false);return false;}
+    if(e.type==='playerSlowed'&&_af.immune.slowed){spawnFloat('IMMUNE 🐢','var(--cyan)',false);return false;}
     if(e.type==='playerRegen'){G.playerHP=Math.min(G.playerMaxHP,G.playerHP+e.hpPerTurn);spawnFloat(`+${e.hpPerTurn}💉`,'var(--green)',false);}
-    if(e.type==='playerRage'){G.playerHP=Math.max(1,G.playerHP-5);spawnFloat('-5😤','var(--red)',false);}
+    if(e.type==='playerRage'){const rc=rageCostFor();G.playerHP=Math.max(1,G.playerHP-rc);spawnFloat(`-${rc}😤`,'var(--red)',false);}
     if(e.type==='bossPoison'||e.type==='bossBurn'){
       const key=e.type==='bossPoison'?'poison':'burn',r=res[key];
       let d=e.hpPerTurn;
@@ -1486,14 +1904,17 @@ function tickEffects(){
       else{if(r!=null)d=Math.max(1,Math.floor(d*r));G.bossHP=Math.max(0,G.bossHP-d);spawnFloat(`-${d}${key==='poison'?'☠':'🔥'}`,key==='poison'?'var(--purple)':'var(--orange)',true);}
     }
     if(e.type==='playerPoison'||e.type==='playerBurn'){
-      G.playerHP=Math.max(0,G.playerHP-e.hpPerTurn);
-      spawnFloat(`-${e.hpPerTurn}${e.type==='playerPoison'?'☠':'🔥'}`,e.type==='playerPoison'?'var(--purple)':'var(--orange)',false);
+      /* ── BOSS ATTRIBUTES: DoT resistance ── */
+      const d=Math.max(1,Math.round(e.hpPerTurn*_dotScale));
+      G.playerHP=Math.max(0,G.playerHP-d);
+      spawnFloat(`-${d}${e.type==='playerPoison'?'☠':'🔥'}`,e.type==='playerPoison'?'var(--purple)':'var(--orange)',false);
     }
-    if(managedElsewhere.has(e.type))return e.turns>0;
+    if(managedElsewhere.has(e.type)) return e.turns>0;
     e.turns--;
     return e.turns>0;
   });
 }
+
 
 
 const EFFECT_LABELS={
@@ -1558,11 +1979,32 @@ function renderEffects(){
   refreshIcons();
 }
 
+
+/* ══ POWERUP SCALING ══
+   Flat magnitudes are replaced by % of the relevant max HP, so a powerup is
+   worth the same FRACTION of a fight in World 5 as it was in World 1.
+   The Math.max floors keep World 1 numbers identical to the old behaviour. */
+function healAmtFor(){  return Math.max(30,Math.round(G.playerMaxHP*0.06));  }
+function regenAmtFor(){ return Math.max(8, Math.round(G.playerMaxHP*0.025)); }
+function rageCostFor(){ return Math.max(5, Math.round(G.playerMaxHP*0.010)); }
+function poisonAmtFor(){return Math.max(12,Math.round((G.bossMaxHP||0)*0.025));}
+function burnAmtFor(){  return Math.max(8, Math.round((G.bossMaxHP||0)*0.018));}
+/* how much BURN suppresses enemy regen / lifesteal — weak on bosses */
+
+
+
+/* world tier label, for UI only */
+function puTier(){
+  const w=(STAGES[G.curStage]&&STAGES[G.curStage].world)||1;
+  return ['I','II','III','IV','V'][w-1]||'I';
+}
+
+
 // Merges a re-used powerup into its existing effect instead of duplicating it.
 // stack = how many times it's been applied; magnitude fields scale with it.
 const STACK_CFG={
-  bossPoison:{turnsAdd:4,magKey:'hpPerTurn',magBase:12,cap:5},
-  bossBurn:{turnsAdd:3,magKey:'hpPerTurn',magBase:8,cap:5},
+  bossPoison:{turnsAdd:4,magKey:'hpPerTurn',magBase:poisonAmtFor,cap:5},
+  bossBurn:{turnsAdd:3,magKey:'hpPerTurn',magBase:burnAmtFor,cap:5},
   playerVulnerable:{turnsAdd:2,magKey:'mult',magBase:0.2,cap:3},
   shield:{turnsAdd:3,magKey:'block',magBase:0.5,cap:3,magCapAt:0.9},
   barrier:{turnsAdd:2,cap:6},
@@ -1572,26 +2014,29 @@ const STACK_CFG={
   double:{turnsAdd:1,cap:4},
   overload:{turnsAdd:2,cap:3},
   mirror:{turnsAdd:1,cap:3},
-  playerRegen:{turnsAdd:3,magKey:'hpPerTurn',magBase:8,cap:5},
+  playerRegen:{turnsAdd:3,magKey:'hpPerTurn',magBase:regenAmtFor,cap:5},
   playerRage:{turnsAdd:3,cap:3},
 };
+
 function addOrStackEffect(type,extra){
   const cfg=STACK_CFG[type]||{turnsAdd:(extra&&extra.turns)||2,cap:5};
+  const mb=(typeof cfg.magBase==='function')?cfg.magBase():cfg.magBase;   // ← NEW
   let e=G.activeEffects.find(x=>x.type===type);
   if(!e){
     e=Object.assign({type,stack:1,turns:cfg.turnsAdd},extra);
-    if(cfg.magKey)e[cfg.magKey]=cfg.magBase;
+    if(cfg.magKey)e[cfg.magKey]=mb;
     G.activeEffects.push(e);
     return e;
   }
   e.stack=Math.min(cfg.cap||5,(e.stack||1)+1);
   e.turns=Math.max(e.turns,cfg.turnsAdd);
   if(cfg.magKey){
-    const raw=cfg.magBase*e.stack;
+    const raw=mb*e.stack;
     e[cfg.magKey]=cfg.magCapAt?Math.min(cfg.magCapAt,raw):raw;
   }
   return e;
 }
+
 
 function usePowerup(type){
   if(!PU[type])return;
@@ -1601,16 +2046,14 @@ function usePowerup(type){
   if(!G.inv[type]||G.inv[type]<=0)return;
   const res=STAGES[G.curStage].res||{};
   if(type==='halfhp'){const r=res.halfhp;if(r===0){setMsg('💀 IMMUNE!','var(--dim)');return;}const ratio=r||0.5,newHP=Math.floor(G.bossHP*(1-ratio)),dealt=G.bossHP-newHP;G.bossHP=newHP;G.inv[type]--;sfx.halfhp();spawnFloat(`-${dealt} HALF HP!`,'var(--red)',true);setMsg(`💀 HALF HP! Lost ${dealt}${r&&r!==0.5?' (RES)':''}!`,'var(--red)');G.score+=Math.floor(dealt*.5);updateBars();renderInventory();STAGES[G.curStage].spFn&&STAGES[G.curStage].spFn(G);if(G.bossHP<=0)handleLevelWin();return;}
-  if(type==='heal'){G.inv[type]--;doHealAura(30);setMsg('💚 Healed +30 HP!','var(--green)');sfx.powerup();renderInventory();return;}
+  if(type==='heal'){G.inv[type]--;const g=doHealAura(healAmtFor(),'💚 HEAL');setMsg(`💚 Healed +${g} HP! (Tier ${puTier()})`,'var(--green)');sfx.powerup();renderInventory();return;}
   if(type==='fiftyf'){const ch=G.currentQ.built,wi=ch.map((c,i)=>i).filter(i=>ch[i]!==G.currentQ.a&&!G.eliminated.includes(i));if(wi.length<2){setMsg('Nothing to eliminate!','var(--dim)');return;}shuffle(wi);const removeCount=Math.max(1,Math.ceil(wi.length/2));G.eliminated.push(...wi.slice(0,removeCount));G.inv[type]--;sfx.powerup();setMsg('🎯 50/50!','var(--orange)');renderChoices();renderInventory();return;}
   if(type==='revive'){setMsg('🍖 Revive ready (auto on death).','var(--pink)');return;}
 
   if(type==='divine'){
     G.inv[type]--;
-    const healed=G.playerMaxHP-G.playerHP;
-    G.playerHP=G.playerMaxHP;
-    doHealAura(healed);
-    sfx.powerup();setMsg('🌟 DIVINE! Full HP restored!','var(--yellow)');
+    const healed=doHealAura(G.playerMaxHP-G.playerHP,'🌟 FULL HP');
+    sfx.powerup();setMsg(`🌟 DIVINE! Restored ${healed} HP — full health!`,'var(--yellow)');
     updateBars();renderInventory();return;
   }
     if(type==='gamble'){
@@ -1662,10 +2105,9 @@ function usePowerup(type){
     G.inv[type]--;
     const stolen=Math.min(G.bossHP,Math.max(10,Math.floor(G.bossHP*0.08)));
     G.bossHP=Math.max(0,G.bossHP-stolen);
-    G.playerHP=Math.min(G.playerMaxHP,G.playerHP+stolen);
     sfx.powerup();spawnFloat(`-${stolen}🩸`,'var(--purple)',true);
-    doHealAura(stolen);
-    setMsg(`🩸 LEECH! Stole ${stolen} HP from boss!`,'var(--purple)');
+    const got=doHealAura(stolen,'🩸 LEECH');   // single source of healing
+    setMsg(`🩸 LEECH! Drained ${stolen} — recovered ${got} HP!`,'var(--purple)');
     updateBars();renderInventory();
     if(G.bossHP<=0)handleLevelWin();return;
   }
@@ -1685,7 +2127,7 @@ function usePowerup(type){
   if(type==='rage'){
     G.inv[type]--;
     const e=addOrStackEffect('playerRage',{});
-    sfx.powerup();setMsg(`😤 RAGE ×${e.stack}! ATK×2, -5HP/turn`,'var(--red)');
+    sfx.powerup();setMsg(`😤 RAGE ×${e.stack}! ATK×2, -${rageCostFor()}HP/turn`,'var(--red)');
     doAnim('player-f','aS',()=>{});spawnFloat('😤 RAGE!','var(--red)',false);
     renderEffects();renderInventory();return;
   }
@@ -1771,11 +2213,21 @@ function handleLevelWin(){
   const si=G.curStage,li=G.curLevel,stg=STAGES[si],lv=stg.levels[li];
   const isFinalLevel=li===4,isFinalStage=si===24&&isFinalLevel;
   const attr=lv.attr;
+  const _b={hp:G.pHP,atk:G.pATK,res:G.pRES};
   G.pHP+=attr.hp;G.pATK+=attr.atk;G.pRES+=attr.res;
   capPlayerStats();
+  const _gain={hp:G.pHP-_b.hp,atk:G.pATK-_b.atk,res:G.pRES-_b.res};
+  const _hpBeforeHeal=G.playerHP;
   G.playerHP=Math.min(G.playerMaxHP,G.playerHP+attr.hp+Math.round(G.playerMaxHP*CLEAR_HEAL));
+  const _healed=G.playerHP-_hpBeforeHeal;
   G.levelsCleared[si]=Math.max(G.levelsCleared[si],li+1);if(isFinalLevel)G.stagesCleared++;
-  if(isFinalStage){setTimeout(()=>endGame(true),600);return;}
+  if(isFinalStage){
+    const m=BOSS_MULT[24];
+    if(m&&m.all){G.pHP=Math.floor(G.pHP*m.all);G.pATK=Math.floor(G.pATK*m.all);G.pRES=Math.floor(G.pRES*m.all);capPlayerStats();}
+    grantBossAttr(24);
+    G.score+=5000;
+    setTimeout(()=>endGame(true),600);return;
+  }
   const nextSi=isFinalLevel?si+1:si,nextLi=isFinalLevel?0:li+1;
   const awTitleEl=document.getElementById('aw-title');
   awTitleEl.innerHTML=lv.boss
@@ -1784,17 +2236,43 @@ function handleLevelWin(){
     ?'<i data-lucide="swords" style="width:16px;vertical-align:-3px"></i> MINI-BOSS CLEAR!'
     :'<i data-lucide="check" style="width:16px;vertical-align:-3px"></i> LEVEL CLEAR!';  document.getElementById('aw-sub').textContent=lv.sub+' defeated!';
   const gains=document.getElementById('aw-gains');gains.innerHTML='';
-  const addRow=(icon,text,val)=>{const r=document.createElement('div');r.className='aw-row';r.innerHTML=`<span class="aw-icon">${icon}</span><span class="aw-text">${text}</span><span class="aw-val">+${val}</span>`;gains.appendChild(r);};
-  if(attr.hp)addRow('❤','Max HP & Heal',attr.hp);if(attr.atk)addRow('⚔','Attack Bonus',attr.atk);if(attr.res)addRow('🛡','Resistance',attr.res+'%');
-  if(lv.boss&&si===4){const r=document.createElement('div');r.className='aw-row';r.innerHTML='<span class="aw-icon">💥</span><span class="aw-text" style="color:var(--orange)">EMBER KING DEFEATED! ATK×1.2 permanent!</span><span class="aw-val" style="color:var(--orange)">RARE</span>';gains.appendChild(r);G.pATK=Math.floor(G.pATK*1.2);}
-  if(lv.boss&&si===9){const r=document.createElement('div');r.className='aw-row';r.innerHTML='<span class="aw-icon">🌟</span><span class="aw-text" style="color:var(--yellow)">OMEGA REX SLAIN! All stats ×1.5!</span><span class="aw-val" style="color:var(--yellow)">LEGEND</span>';gains.appendChild(r);}
-  if(lv.boss&&si===14){const r=document.createElement('div');r.className='aw-row';r.innerHTML='<span class="aw-icon">🌌</span><span class="aw-text" style="color:var(--purple)">COSMOS PRIME DEFEATED! All stats ×1.4!</span><span class="aw-val" style="color:var(--purple)">EPIC</span>';gains.appendChild(r);G.pHP=Math.floor(G.pHP*1.4);G.pATK=Math.floor(G.pATK*1.4);G.pRES=Math.floor(G.pRES*1.4);G.playerMaxHP=500+G.pHP;G.playerHP=G.playerMaxHP;}
-  if(lv.boss&&si===19){const r=document.createElement('div');r.className='aw-row';r.innerHTML='<span class="aw-icon">🕳️</span><span class="aw-text" style="color:var(--cyan)">SINGULARITY ALPHA DEFEATED! All stats ×1.4!</span><span class="aw-val" style="color:var(--cyan)">EPIC</span>';gains.appendChild(r);G.pHP=Math.floor(G.pHP*1.4);G.pATK=Math.floor(G.pATK*1.4);G.pRES=Math.floor(G.pRES*1.4);G.playerMaxHP=500+G.pHP;G.playerHP=G.playerMaxHP;}
-  if(lv.boss&&si===20){const r=document.createElement('div');r.className='aw-row';r.innerHTML='<span class="aw-icon">🛠️</span><span class="aw-text" style="color:var(--orange)">VULCAN DEFEATED! All stats ×1.3!</span><span class="aw-val" style="color:var(--orange)">LEGEND</span>';gains.appendChild(r);G.pHP=Math.floor(G.pHP*1.3);G.pATK=Math.floor(G.pATK*1.3);G.pRES=Math.floor(G.pRES*1.3);G.playerMaxHP=500+G.pHP;G.playerHP=G.playerMaxHP;}
-  if(lv.boss&&si===21){const r=document.createElement('div');r.className='aw-row';r.innerHTML='<span class="aw-icon">⏳</span><span class="aw-text" style="color:var(--cyan)">CHRONOS DEFEATED! All stats ×1.3!</span><span class="aw-val" style="color:var(--cyan)">LEGEND</span>';gains.appendChild(r);G.pHP=Math.floor(G.pHP*1.3);G.pATK=Math.floor(G.pATK*1.3);G.pRES=Math.floor(G.pRES*1.3);G.playerMaxHP=500+G.pHP;G.playerHP=G.playerMaxHP;}
-  if(lv.boss&&si===22){const r=document.createElement('div');r.className='aw-row';r.innerHTML='<span class="aw-icon">🐙</span><span class="aw-text" style="color:var(--purple)">CTHULHU LEGACY DEFEATED! All stats ×1.3!</span><span class="aw-val" style="color:var(--purple)">LEGEND</span>';gains.appendChild(r);G.pHP=Math.floor(G.pHP*1.3);G.pATK=Math.floor(G.pATK*1.3);G.pRES=Math.floor(G.pRES*1.3);G.playerMaxHP=500+G.pHP;G.playerHP=G.playerMaxHP;}
-  if(lv.boss&&si===23){const r=document.createElement('div');r.className='aw-row';r.innerHTML='<span class="aw-icon">💫</span><span class="aw-text" style="color:var(--pink)">AMATERASU DEFEATED! All stats ×1.3!</span><span class="aw-val" style="color:var(--pink)">MYTHIC</span>';gains.appendChild(r);G.pHP=Math.floor(G.pHP*1.3);G.pATK=Math.floor(G.pATK*1.3);G.pRES=Math.floor(G.pRES*1.3);G.playerMaxHP=500+G.pHP;G.playerHP=G.playerMaxHP;}
+    const addStat=(icon,label,want,got,cls)=>{
+    const zero=!want;
+    const r=document.createElement('div');
+    r.className='aw-row '+cls+(zero?' aw-none':'');
+    r.innerHTML=`<span class="aw-icon">${icon}</span><span class="aw-text">${label}</span>`+
+      `<span class="aw-val">${zero?'—':(got>0?'+'+got:'MAX')}</span>`;
+    gains.appendChild(r);
+  };
+  addStat('❤','MAX HP',attr.hp,_gain.hp,'aw-hp');
+  addStat('⚔','ATTACK',attr.atk,_gain.atk,'aw-atk');
+  addStat('🛡','RESIST',attr.res,_gain.res,'aw-res');
+  addStat('💚','RECOVERED',_healed,_healed,'aw-heal');
+
+    if(lv.boss&&BOSS_MULT[si]){
+    const m=BOSS_MULT[si];
+    const before={hp:G.pHP,atk:G.pATK,res:G.pRES};
+    if(m.all){G.pHP=Math.floor(G.pHP*m.all);G.pATK=Math.floor(G.pATK*m.all);G.pRES=Math.floor(G.pRES*m.all);}
+    if(m.atk)G.pATK=Math.floor(G.pATK*m.atk);
     capPlayerStats();
+    const gained=(G.pHP-before.hp)+(G.pATK-before.atk)+(G.pRES-before.res);
+    const r=document.createElement('div');r.className='aw-row aw-big';
+    r.innerHTML=`<span class="aw-icon">${m.icon}</span>
+      <span class="aw-text" style="color:var(${m.col})">${m.text}</span>
+      <span class="aw-val" style="color:var(${m.col})">${gained>0?m.tier:'MAX'}</span>`;
+    gains.appendChild(r);
+    if(gained<=0)G.score+=2000;               // caps hit → pay out instead of vanishing
+    const got=grantBossAttr(si);
+    if(got){
+      const r2=document.createElement('div');r2.className='aw-row aw-big';
+      r2.innerHTML=`<span class="aw-icon">${got.icon}</span>
+        <span class="aw-text" style="color:var(--yellow)">ATTRIBUTE UNLOCKED — ${got.name}</span>
+        <span class="aw-val" style="color:var(--yellow)">EQUIP</span>`;
+      gains.appendChild(r2);
+    }
+  }
+  capPlayerStats();
+
 
     document.getElementById('aw-btn').onclick=()=>{
     if(G.isPractice){
@@ -1859,7 +2337,7 @@ function renderPickPU(){
     return `<div class="pu-pick-card${picked?' picked':''}" style="border-color:${PU[t].border};color:${PU[t].color}" onclick="pickReward('${t}')">
       <div class="card-icon">${PU[t].icon}</div>
       <div class="card-name" style="color:${PU[t].color}">${PU[t].name}</div>
-      <div class="card-desc">${PU[t].desc}</div>
+      <div class="card-desc">${puDesc(t)}</div>
       <div class="card-rarity">${tagTxt}</div>
     </div>`;
   }).join('');
@@ -2249,89 +2727,225 @@ function applyDailyGifts(){
 /* ---------- INTRO / HOW TO PLAY ---------- */
 const INTRO_KEY='dqb3_seen_intro';
 const INTRO_PAGES=[
-  { t:'WELCOME, ADVENTURER!', html:`
-    <div class="ig-vs-demo">
-      <div class="ig-vs-side">
-        <div class="ig-vs-emoji">🦖</div>
-        <div class="ig-vs-bar"><span style="width:78%;background:var(--green)"></span></div>
-        <div class="ig-vs-label">YOU</div>
-      </div>
-      <div class="ig-vs-mid">VS</div>
-      <div class="ig-vs-side">
-        <div class="ig-vs-emoji">🦕</div>
-        <div class="ig-vs-bar"><span style="width:40%;background:var(--red)"></span></div>
-        <div class="ig-vs-label">ENEMY</div>
-      </div>
-    </div>
-    <div style="font-size:15px;color:var(--text);line-height:1.6;text-align:center">
-      Dino Quiz Battle is a turn-based quiz RPG. Answer questions correctly to <b style="color:var(--green)">attack</b>,
-      get them wrong and the enemy <b style="color:var(--red)">counters</b>. Clear 5 worlds, 25 stages, and 50 battles
-      to reach the final boss.
-    </div>
-  `},
-  { t:'HOW A BATTLE WORKS', html:`
-    <div class="ig-flow">
-      <div class="ig-flow-step"><div class="ig-flow-num">1</div><div class="ig-flow-text">A question appears with a <b>timer</b> — answer before it runs out.</div></div>
-      <div class="ig-flow-arrow">▼</div>
-      <div class="ig-flow-step"><div class="ig-flow-num">2</div><div class="ig-flow-text"><b>Correct</b> → you deal damage. Faster answers and longer streaks hit harder.</div></div>
-      <div class="ig-flow-arrow">▼</div>
-      <div class="ig-flow-step"><div class="ig-flow-num">3</div><div class="ig-flow-text"><b>Wrong or time-out</b> → your streak resets and the enemy strikes back.</div></div>
-      <div class="ig-flow-arrow">▼</div>
-      <div class="ig-flow-step"><div class="ig-flow-num">4</div><div class="ig-flow-text">Repeat until one side's HP hits 0. Win to earn permanent <b>HP / ATK / RES</b>.</div></div>
-    </div>
-    <div class="ig-callout">💡 Build a streak (3, 5, 10...) for combo multipliers and bonus burst damage!</div>
-  `},
-  { t:'POWERUPS & LOADOUT', html:`
-    <ul class="ig-step-list">
-      <li><span class="ig-step-dot">●</span><span><b>World 1</b> — pick 3 starting powerups from a random offer of 8.</span></li>
-      <li><span class="ig-step-dot">●</span><span><b>Worlds 2, 3 & 5</b> — you get to add 1 more powerup, and every stack you own gets refilled.</span></li>
-      <li><span class="ig-step-dot">●</span><span>Between some levels you'll get a <b>1-of-3 bonus</b>: if you already own it, it tops up your stock. If you don't, it fires instantly instead of going to waste!</span></li>
-      <li><span class="ig-step-dot">●</span><span><b>AUTO-REVIVE</b> lives in its own dedicated slot and saves you once from a killing blow.</span></li>
-    </ul>
-    <div class="ig-callout">💡 Open the <b style="color:var(--purple)">POWERUP GUIDE</b> from the menu anytime to see what every item does.</div>
-  `},
-  { t:'CROWD CONTROL — KNOW THE DIFFERENCE', html:`
-    <table class="ig-cmp-table">
-      <tr><th>Item</th><th>Effect</th></tr>
-      <tr><td class="ig-cmp-name" style="color:var(--blue)">❄ FREEZE</td><td>Skips 1 enemy turn AND boosts your next hit <b style="color:var(--green)">+20% damage</b>. Best used to open a burst combo.</td></tr>
-      <tr><td class="ig-cmp-name" style="color:var(--cyan)">⚡ PARALYZE</td><td>Skips a turn with a <b style="color:var(--cyan)">30% chance to chain</b> into another skipped turn. Great for stalling tough hitters.</td></tr>
-      <tr><td class="ig-cmp-name" style="color:var(--yellow)">💫 STUN</td><td>Guaranteed skip that <b style="color:var(--red)">ignores all resistance/immunity</b> — the reliable panic button against bosses immune to the other two.</td></tr>
-    </table>
-    <div class="ig-callout">⚠ Some bosses resist or are immune to FREEZE/PARALYZE — STUN always works regardless.</div>
-  `},
-  { t:'WORLDS & BOSSES', html:`
-    <div class="ig-world-strip">
-      <div class="ig-world-chip"><div class="icon">🌿</div><div class="lbl">WORLD 1<br>KNOWN LANDS</div></div>
-      <div class="ig-world-chip"><div class="icon">🌑</div><div class="lbl">WORLD 2<br>DARK BEYOND</div></div>
-      <div class="ig-world-chip"><div class="icon">⚡</div><div class="lbl">WORLD 3<br>THE ABYSS</div></div>
-      <div class="ig-world-chip"><div class="icon">🌀</div><div class="lbl">WORLD 4<br>VOID FRONTIER</div></div>
-      <div class="ig-world-chip"><div class="icon">👑</div><div class="lbl">WORLD 5<br>CELESTIAL PANTHEON</div></div>
-    </div>
-    <ul class="ig-step-list" style="margin-top:6px">
-      <li><span class="ig-step-dot">●</span><span>Each world has 5 stages × 5 levels. <b>Level 5 of every stage</b> is a mini-boss or boss fight.</span></li>
-      <li><span class="ig-step-dot">●</span><span>Enemy passives and resistances get harder — check <b>ENEMY PASSIVE & RES</b> in the battle topbar before choosing your items.</span></li>
-      <li><span class="ig-step-dot">●</span><span>Defeating certain named bosses grants permanent stat multipliers on top of normal rewards.</span></li>
-    </ul>
-  `},
-  { t:'SYLLABUS SCAN — STUDY MODE', html:`
-    <div style="font-size:15px;color:var(--text);line-height:1.6">
-      Turn your <b style="color:var(--teal)">own class material</b> into battle questions!
-    </div>
-    <ul class="ig-step-list">
-      <li><span class="ig-step-dot">●</span><span>Pick a subject, then upload a PDF/TXT syllabus or paste text directly.</span></li>
-      <li><span class="ig-step-dot">●</span><span>The scanner detects topics — review, uncheck, or add your own.</span></li>
-      <li><span class="ig-step-dot">●</span><span>Questions are generated per topic, then you battle using YOUR questions instead of the default question bank.</span></li>
-    </ul>
-    <div class="ig-callout">📚 Syllabus runs save separately from your normal run — playing one never touches the other, and you can freely switch between both anytime.</div>
-  `},
-  { t:'DAILY STREAK & LEADERBOARD', html:`
-    <ul class="ig-step-list">
-      <li><span class="ig-step-dot">●</span><span>Open the game once a day to grow your <b style="color:var(--orange)">daily streak</b> and claim a free powerup gift on a 7-day cycle.</span></li>
-      <li><span class="ig-step-dot">●</span><span>Missing a day resets the streak back to Day 1 — but your Hall of Fame scores are always kept.</span></li>
-      <li><span class="ig-step-dot">●</span><span>After any run ends, save your score to the <b style="color:var(--yellow)">Hall of Fame</b> leaderboard — it tracks your loadout, difficulty, and stats too.</span></li>
-    </ul>
-    <div class="ig-callout">🎮 Ready? Close this guide and hit START GAME. Good luck out there!</div>
-  `},
+
+{ t:'1 · WHAT THIS GAME IS', html:`
+  <div class="ig-vs-demo">
+    <div class="ig-vs-side"><div class="ig-vs-emoji">🦖</div>
+      <div class="ig-vs-bar"><span style="width:78%;background:var(--green)"></span></div>
+      <div class="ig-vs-label">YOU</div></div>
+    <div class="ig-vs-mid">VS</div>
+    <div class="ig-vs-side"><div class="ig-vs-emoji">🦕</div>
+      <div class="ig-vs-bar"><span style="width:40%;background:var(--red)"></span></div>
+      <div class="ig-vs-label">ENEMY</div></div>
+  </div>
+  <div style="font-size:15px;color:var(--text);line-height:1.6;text-align:center">
+    A turn-based quiz RPG. Your <b style="color:var(--green)">knowledge is your weapon</b> —
+    a correct answer is an attack, a wrong answer is a free hit for the enemy.
+    Everything else (powerups, stats, attributes) only changes <i>how hard</i> that answer lands.
+  </div>
+  <div class="ig-callout">📖 This guide has 15 parts and covers every system in the game. Use BACK / NEXT to move.</div>
+`},
+
+{ t:'2 · THE SHAPE OF A RUN', html:`
+  <div class="ig-world-strip">
+    <div class="ig-world-chip"><div class="icon">🌿</div><div class="lbl">WORLD 1<br>KNOWN LANDS</div></div>
+    <div class="ig-world-chip"><div class="icon">🌑</div><div class="lbl">WORLD 2<br>DARK BEYOND</div></div>
+    <div class="ig-world-chip"><div class="icon">⚡</div><div class="lbl">WORLD 3<br>THE ABYSS</div></div>
+    <div class="ig-world-chip"><div class="icon">🌀</div><div class="lbl">WORLD 4<br>VOID FRONTIER</div></div>
+    <div class="ig-world-chip"><div class="icon">👑</div><div class="lbl">WORLD 5<br>PANTHEON</div></div>
+  </div>
+  <ul class="ig-step-list" style="margin-top:6px">
+    <li><span class="ig-step-dot">●</span><span><b>5 worlds → 25 stages → 125 battles.</b> Each stage is 5 levels.</span></li>
+    <li><span class="ig-step-dot">●</span><span><b>Level 5 of every stage</b> is a mini-boss. Stages marked with a crown end in a true <b style="color:var(--red)">world boss</b>.</span></li>
+    <li><span class="ig-step-dot">●</span><span>Progress saves automatically after every level. Quitting mid-run keeps your place.</span></li>
+    <li><span class="ig-step-dot">●</span><span>Beating <b>ETERNUS PRIME</b> in World 5 ends the run with a <b style="color:var(--yellow)">+5000</b> completion bonus.</span></li>
+  </ul>
+`},
+
+{ t:'3 · DIFFICULTY & TIMER MODE', html:`
+  <table class="ig-cmp-table">
+    <tr><th>Mode</th><th>Timer</th><th>Choices</th><th>Drop rate</th></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--green)">EASY</td><td>30s</td><td>4</td><td>48%</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--yellow)">MEDIUM</td><td>20s</td><td>4</td><td>36%</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--red)">HARD</td><td>12s</td><td>6</td><td>24%</td></tr>
+  </table>
+  <ul class="ig-step-list">
+    <li><span class="ig-step-dot">●</span><span>Difficulty also scales every enemy's damage: easy ×0.85, medium ×1, hard ×1.15.</span></li>
+    <li><span class="ig-step-dot">●</span><span><b>TIMED mode</b> — leftover seconds become raw damage. Fast answers hit far harder.</span></li>
+    <li><span class="ig-step-dot">●</span><span><b>CHILL mode</b> — no clock. You still get a flat 90% time bonus, so you lose the speed upside but never get rushed.</span></li>
+  </ul>
+  <div class="ig-callout">⚠ The timer toggle locks the moment a run starts. Choose it on the map before your first fight.</div>
+`},
+
+{ t:'4 · HOW YOUR DAMAGE IS BUILT', html:`
+  <div class="ig-flow">
+    <div class="ig-flow-step"><div class="ig-flow-num">1</div><div class="ig-flow-text"><b>Question tier</b> — easy 12, medium 22, hard 34 base.</div></div>
+    <div class="ig-flow-arrow">+</div>
+    <div class="ig-flow-step"><div class="ig-flow-num">2</div><div class="ig-flow-text"><b>Speed</b> — seconds left ×1.8 in timed mode.</div></div>
+    <div class="ig-flow-arrow">+</div>
+    <div class="ig-flow-step"><div class="ig-flow-num">3</div><div class="ig-flow-text"><b>Streak</b> — +3 per consecutive correct answer.</div></div>
+    <div class="ig-flow-arrow">×</div>
+    <div class="ig-flow-step"><div class="ig-flow-num">4</div><div class="ig-flow-text"><b>Combo multiplier</b> — then powerups (2× / 3× / RAGE) multiply on top.</div></div>
+    <div class="ig-flow-arrow">+</div>
+    <div class="ig-flow-step"><div class="ig-flow-num">5</div><div class="ig-flow-text"><b>Your ATK stat</b> and passive bonus are added last, then attribute ATK% applies.</div></div>
+  </div>
+  <div class="ig-callout">💡 Because steps 1–3 are multiplied by the combo, a long streak makes every other bonus worth more.</div>
+`},
+
+{ t:'5 · STREAK & COMBO', html:`
+  <ul class="ig-step-list">
+    <li><span class="ig-step-dot">●</span><span><b>Streak</b> = correct answers in a row. Resets to 0 on any wrong answer or timeout.</span></li>
+    <li><span class="ig-step-dot">●</span><span><b>Combo</b> = 1 + (streak ÷ 3), capped at <b style="color:var(--green)">×8</b>. A wrong answer only drops it by 1, so you recover fast.</span></li>
+    <li><span class="ig-step-dot">●</span><span>Hitting streak <b>5, 10, 15, 20, 25 or 30</b> fires a one-off <b style="color:var(--yellow)">×1.5 burst</b> on that hit.</span></li>
+    <li><span class="ig-step-dot">●</span><span>Streak 3+ adds <b>+10%</b> to your powerup drop chance. Streak 7+ can drop a free AUTO-REVIVE.</span></li>
+    <li><span class="ig-step-dot">●</span><span>Your score goes up by exactly the damage you deal — so damage and score are the same race.</span></li>
+  </ul>
+`},
+
+{ t:'6 · YOUR PASSIVE (AUTOMATIC)', html:`
+  <div class="ig-sub" style="font-size:14px;color:var(--dim);line-height:1.5">
+    You never pick this. It upgrades on its own every 3 stages cleared and is shown in the battle topbar.
+  </div>
+  <table class="ig-cmp-table">
+    <tr><th>Unlock</th><th>Passive</th></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--dim)">START</td><td>🩹 <b>Resilience</b> — heal +5 HP on every correct answer</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--teal)">3 STAGES</td><td>⚔ <b>Sharpened</b> — +10 flat damage on correct answers</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--orange)">6 STAGES</td><td>🔥 <b>Battle Aura</b> — +14 damage and heal 6 HP</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--yellow)">9 STAGES</td><td>🌟 <b>Heroic Soul</b> — +20 damage, heal 9 HP, 15% chance to crit for ×2.5</td></tr>
+  </table>
+`},
+
+{ t:'7 · HOW THE ENEMY HITS BACK', html:`
+  <div class="ig-flow">
+    <div class="ig-flow-step"><div class="ig-flow-num">1</div><div class="ig-flow-text"><b>It can miss.</b> 12% on normals, 9% mini-boss, 6% boss.</div></div>
+    <div class="ig-flow-arrow">▼</div>
+    <div class="ig-flow-step"><div class="ig-flow-num">2</div><div class="ig-flow-text"><b>Momentum</b> — every other connected hit escalates, +10% each time up to <b style="color:var(--red)">+60%</b>.</div></div>
+    <div class="ig-flow-arrow">▼</div>
+    <div class="ig-flow-step"><div class="ig-flow-num">3</div><div class="ig-flow-text"><b>Crit</b> 8 / 12 / 15% by tier for ×1.6 — and separately <b>TRUE DMG</b> 4 / 7 / 10%, which ignores all your RESIST.</div></div>
+    <div class="ig-flow-arrow">▼</div>
+    <div class="ig-flow-step"><div class="ig-flow-num">4</div><div class="ig-flow-text">Your RESIST, SHIELD, BARRIER and attribute dodge are applied last.</div></div>
+  </div>
+  <div class="ig-callout">🛡 Every hit is capped as a share of your max HP — 18% normal, 24% mini, 30% boss. Nothing can one-shot you from full.</div>
+`},
+
+{ t:'8 · ENEMY PASSIVES & RESISTANCE', html:`
+  <div style="font-size:14px;color:var(--dim);line-height:1.5">
+    Read <b style="color:var(--teal)">ENEMY PASSIVE &amp; RES</b> in the battle topbar before you spend anything.
+  </div>
+  <table class="ig-cmp-table">
+    <tr><th>Trait</th><th>What it does to you</th></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--cyan)">DODGE</td><td>A flat % of your correct answers deal nothing. POISON shreds it.</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--blue)">DMG REDUCTION</td><td>Cuts all your damage by a fixed %.</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--red)">THORNS</td><td>Reflects part of your damage back at you.</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--purple)">LIFESTEAL</td><td>It heals from the damage it deals you.</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--green)">REGEN</td><td>Heals a % of max HP each turn. BURN blocks it.</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--yellow)">RESISTANCE</td><td>Named as <b>×IMM</b> (fully immune) or a % reduction to that status.</td></tr>
+  </table>
+  <div class="ig-callout">⚠ Late bosses also run scripted specials at HP thresholds — erasing items, enraging, or restoring their own HP.</div>
+`},
+
+{ t:'9 · ELEMENTAL CONTACT DAMAGE', html:`
+  <div style="font-size:14px;color:var(--dim);line-height:1.5">
+    Every stage has a hidden element. When you strike it, its body can strike back with a status.
+  </div>
+  <table class="ig-cmp-table">
+    <tr><th>Element</th><th>On contact</th></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--purple)">☠ POISON</td><td>35% — poisons you for 3 turns</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--orange)">🔥 FIRE</td><td>30% — burns you for 3 turns</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--cyan)">❄ ICE</td><td>30% — SLOWED, your answer timer is cut 40%</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--cyan)">⚡ ELECTRIC</td><td>25% — paralyzes you for 1 turn</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--purple)">🌑 SHADOW / VOID</td><td>25% — BLINDED, your choices blur for 2 turns</td></tr>
+  </table>
+  <div class="ig-callout">💡 Boss attributes with immunity (Infinite Loop, Flame Armor) shut these off completely.</div>
+`},
+
+{ t:'10 · POWERUPS — OFFENSE', html:`
+  <table class="ig-cmp-table">
+    <tr><th>Item</th><th>Effect</th></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--yellow)">⚡ 2× DMG</td><td>Next hit doubled. Stacks multiply into one hit.</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--yellow)">⚡ OVERLOAD</td><td>Next hit ×3, but the next hit you take is +20%.</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--orange)">🔥 BURN</td><td>Damage over 3 turns and <b>blocks enemy regen</b>.</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--purple)">☠ POISON</td><td>Damage over 4 turns and <b>shreds enemy dodge</b>.</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--red)">💀 HALF HP</td><td>Halves current enemy HP. Heavily resisted by bosses.</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--red)">💣 NUKE</td><td>Deals 50% of <b>your</b> max HP as damage.</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--purple)">🩸 LEECH</td><td>Steals 8% of the enemy's current HP.</td></tr>
+  </table>
+  <div class="ig-callout">💡 Damage numbers scale with your max HP as you level, so these never fall off.</div>
+`},
+
+{ t:'11 · POWERUPS — DEFENSE & CONTROL', html:`
+  <table class="ig-cmp-table">
+    <tr><th>Item</th><th>Effect</th></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--teal)">🛡 SHIELD</td><td>Absorbs 50% of damage for 3 hits.</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--blue)">🧱 BARRIER</td><td>Blocks the next 2 hits <b>completely</b>.</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--teal)">🪞 MIRROR</td><td>Reflects one incoming hit back. Stacks multiply the reflect.</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--blue)">❄ FREEZE</td><td>Skips a turn <b>and</b> your next hit deals +20%. Best combo opener.</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--cyan)">⚡ PARALYZE</td><td>Skips a turn, 30% chance to chain into another.</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--yellow)">💫 STUN</td><td>Guaranteed skip that <b style="color:var(--red)">ignores all immunity</b>.</td></tr>
+  </table>
+  <div class="ig-callout">⚠ Most late bosses are immune to FREEZE and PARALYZE. STUN is the only control that always lands — save it.</div>
+`},
+
+{ t:'12 · POWERUPS — SUPPORT', html:`
+  <table class="ig-cmp-table">
+    <tr><th>Item</th><th>Effect</th></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--green)">💚 HEAL</td><td>Restores 6% of your max HP.</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--green)">💉 REGEN</td><td>Heals over 3 turns.</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--yellow)">🌟 DIVINE</td><td>Full HP restore.</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--pink)">🍖 AUTO-REVIVE</td><td>Own slot in the inventory. Survives one killing blow.</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--red)">😤 RAGE</td><td>ATK ×2 for 3 turns at the cost of HP each turn.</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--orange)">🎯 50/50</td><td>Removes 2 wrong choices.</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--purple)">🔮 ORACLE</td><td>Reveals the correct answer outright.</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--blue)">👁 INSIGHT</td><td>Adds +30s to the current timer.</td></tr>
+    <tr><td class="ig-cmp-name" style="color:var(--pink)">🎲 GAMBLE</td><td>Rolls a random powerful effect.</td></tr>
+  </table>
+`},
+
+{ t:'13 · HOW YOU GET POWERUPS', html:`
+  <ul class="ig-step-list">
+    <li><span class="ig-step-dot">●</span><span><b>World 1 loadout</b> — pick <b style="color:var(--yellow)">3</b> from an offer of 8. These 3 are your permanent loadout.</span></li>
+    <li><span class="ig-step-dot">●</span><span><b>World 2 &amp; 3</b> — add 1 more, and every stack you own refills <b>+2</b>.</span></li>
+    <li><span class="ig-step-dot">●</span><span><b>World 4</b> — add 1 more, all stacks <b>+3</b>. <b>World 5</b> — add <b>2</b> more, all stacks <b>+4</b>.</span></li>
+    <li><span class="ig-step-dot">●</span><span><b>Mid-run bonus</b> — every other level you pick 1 of 3 from the full item list.</span></li>
+    <li><span class="ig-step-dot">●</span><span><b>Battle drops</b> — a chance per level to gain one item from your loadout, boosted by your streak.</span></li>
+    <li><span class="ig-step-dot">●</span><span><b>Daily gifts</b> are added to your inventory when you begin a fresh run.</span></li>
+  </ul>
+  <div class="ig-callout">💡 On a mid-run pick you don't own: healing items become a 🛡 <strong>GUARDIAN</strong> that auto-fires at 50% HP, and anything else fires instantly next fight. Nothing is ever wasted.</div>
+`},
+
+{ t:'14 · LEVEL CLEAR, STATS & CAPS', html:`
+  <ul class="ig-step-list">
+    <li><span class="ig-step-dot">●</span><span>Every cleared level grants permanent <b style="color:var(--red)">MAX HP</b>, <b style="color:var(--orange)">ATTACK</b> and <b style="color:var(--blue)">RESIST</b>. Some levels grant zero of one — that row shows a dash, not a bug.</span></li>
+    <li><span class="ig-step-dot">●</span><span>You also <b style="color:var(--green)">recover 40% of max HP</b> after every win, so you enter each fight healthy.</span></li>
+    <li><span class="ig-step-dot">●</span><span><b>RESIST</b> cuts incoming damage on a curve — but never against TRUE DMG.</span></li>
+    <li><span class="ig-step-dot">●</span><span>Named world bosses grant a <b style="color:var(--yellow)">permanent stat multiplier</b> on top of the normal reward.</span></li>
+    <li><span class="ig-step-dot">●</span><span>Stats are capped so late worlds stay dangerous. At a cap the reward row reads <b>MAX</b>.</span></li>
+  </ul>
+  <div class="ig-callout">⚠ Some World 4 enemies inflict permanent max HP loss. It can never take more than 40% of your pool.</div>
+`},
+
+{ t:'15 · BOSS ATTRIBUTES', html:`
+  <ul class="ig-step-list">
+    <li><span class="ig-step-dot">●</span><span>Killing a <b>world boss</b> permanently unlocks that boss's signature attribute for your collection.</span></li>
+    <li><span class="ig-step-dot">●</span><span>You equip them from the <b style="color:var(--yellow)">ATTR</b> bar at the top of the Home and Map screens — tap it to expand, then CHOOSE.</span></li>
+    <li><span class="ig-step-dot">●</span><span>You start with <b>1 slot</b>. A <b>2nd slot</b> unlocks after clearing World 3.</span></li>
+    <li><span class="ig-step-dot">●</span><span>They give dodge, damage reduction, reflect, lifesteal, regen, status immunity, ATK% or healing%. Each effect is capped at 30% total, status resist at 80%.</span></li>
+    <li><span class="ig-step-dot">●</span><span>Loadout <b>locks the moment you enter an unfinished world</b> and unlocks again when you beat its boss.</span></li>
+  </ul>
+  <div class="ig-callout">💡 Swap between worlds, not between fights — match the attribute to the next world's threat.</div>
+`},
+
+{ t:'16 · TRAINING, SYLLABUS, STREAK & RANKS', html:`
+  <ul class="ig-step-list">
+    <li><span class="ig-step-dot">●</span><span><b style="color:var(--red)">TRAINING</b> — jump into any stage with full stats and 5 of every powerup. Nothing is saved or scored.</span></li>
+    <li><span class="ig-step-dot">●</span><span><b style="color:var(--teal)">SYLLABUS SCAN</b> — upload a PDF/TXT or paste text, review the detected topics, and battle using <b>your own class questions</b>.</span></li>
+    <li><span class="ig-step-dot">●</span><span>Syllabus runs save <b>separately</b> from your normal run. You can switch freely and lose neither.</span></li>
+    <li><span class="ig-step-dot">●</span><span><b style="color:var(--orange)">DAILY STREAK</b> — open the game once a day for a gift on a 7-day cycle. Missing a day resets to Day 1.</span></li>
+    <li><span class="ig-step-dot">●</span><span><b style="color:var(--yellow)">HALL OF FAME</b> — top 10 scores, each recording your difficulty, timer mode, loadout and final stats.</span></li>
+  </ul>
+  <div class="ig-callout">🎮 That's the whole system. Close this and hit START GAME — good luck out there!</div>
+`},
+
 ];
 let _introPage=0;
 function openIntro(first){
@@ -2339,7 +2953,32 @@ function openIntro(first){
   document.getElementById('intro-modal').classList.add('on');
   if(first){try{localStorage.setItem(INTRO_KEY,'1');}catch(e){}}
 }
+
+function _introFit(){
+  const m=document.getElementById('intro-modal'); if(!m||m._fit)return;
+  const box=m.querySelector('.modal-box')||m.firstElementChild;
+  if(box)box.classList.add('intro-wide');
+  const prev=document.getElementById('intro-prev'),
+        next=document.getElementById('intro-next'),
+        dots=document.getElementById('intro-dots');
+  if(!prev||!next||!box)return;
+  let row=prev.parentElement;
+  if(row===box||!row.contains(next)){
+    row=document.createElement('div');row.className='ig-nav';
+    box.appendChild(row);row.appendChild(prev);
+    if(dots)row.appendChild(dots);
+    row.appendChild(next);
+  }else{
+    row.classList.add('ig-nav');
+    if(dots&&!row.contains(dots))row.insertBefore(dots,next);
+  }
+  row.insertBefore(prev,row.firstChild);
+  box.appendChild(row);
+  m._fit=1;
+}
+
 function renderIntro(){
+_introFit();
   const p=INTRO_PAGES[_introPage];
   document.getElementById('intro-title').textContent=p.t;
   document.getElementById('intro-body').innerHTML=
@@ -2413,13 +3052,17 @@ function startPractice(si,li){
 function openPowerupGuide(){
   const list=document.getElementById('pu-guide-list');
   list.innerHTML=PU_CATEGORIES.map(cat=>{
+    const sub=document.querySelector('#pu-guide-modal .modal-sub');
+  if(sub)sub.innerHTML=`Powerups scale with your world — <b style="color:var(--purple)">TIER ${puTier()}</b>. `+
+    `Heals, regen, poison and burn are percentages, so they stay useful in Worlds 3-5. `+
+    `World transitions add <b>charges</b>; the percentages handle the <b>power</b>.`;
     const items=cat.types.filter(t=>PU[t]).map(t=>{
       const d=PU[t],icon=PU_ICON_MAP[t]||'sparkles';
       return `<div class="pug-item" style="border-color:${d.border}">
         <div class="pug-icon" style="color:${d.color}"><i data-lucide="${icon}"></i></div>
         <div class="pug-text">
           <div class="pug-name" style="color:${d.color}">${d.name}</div>
-          <div class="pug-desc">${d.desc}</div>
+          <div class="pug-desc">${puDesc(t)}</div>
         </div>
       </div>`;
     }).join('');
@@ -2554,6 +3197,7 @@ function renderHome(){
     document.getElementById('home-stats-grid').innerHTML=html;
     refreshIcons();
   }
+  renderAttrBar();
 }
 function closeModal(id){document.getElementById(id).classList.remove('on');}
 
@@ -3445,6 +4089,19 @@ window.endGame=function(win){
   }
   _end(win);
 };
+
+/* ── BOSS ATTRIBUTES: auto-refresh the loadout bar on every screen paint ── */
+(function(){
+  ['renderHome','buildMap','resumeBattle','continueGame'].forEach(function(fn){
+    if(typeof window[fn]!=='function')return;
+    const _orig=window[fn];
+    window[fn]=function(){
+      const r=_orig.apply(this,arguments);
+      try{renderAttrBar();}catch(e){}
+      return r;
+    };
+  });
+})();
 
 /* ---------- boot ---------- */
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',injectLayers);
