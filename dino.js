@@ -936,6 +936,48 @@ try{localStorage.removeItem(PRACTICE_SAVE_KEY);
 }catch(e){}
 }
 
+/* ---------- COMPLETED MAP SNAPSHOT ---------- */   // ← ADD THIS WHOLE BLOCK
+const COMPLETED_KEY='dqb3_completed_map';
+
+function saveCompletedMapSnapshot(){
+  if(!G)return;
+  try{
+    const snap={
+      diff:G.diff,
+      levelsCleared:STAGES.map(()=>5),
+      stagesCleared:STAGES.length,
+      curStage:STAGES.length-1,curLevel:4,
+      pHP:G.pHP,pATK:G.pATK,pRES:G.pRES,
+      playerMaxHP:G.playerMaxHP,
+      score:G.score,
+      attrsOwned:G.attrsOwned||[],
+      attrsEquipped:G.attrsEquipped||[],
+      date:Date.now()
+    };
+    localStorage.setItem(COMPLETED_KEY,JSON.stringify(snap));
+  }catch(e){}
+}
+function hasCompletedMap(){try{return !!localStorage.getItem(COMPLETED_KEY);}catch(e){return false;}}
+
+function viewCompletedMap(){
+  let snap=null;
+  try{snap=JSON.parse(localStorage.getItem(COMPLETED_KEY));}catch(e){}
+  if(!snap)return;
+  G=freshState(snap.diff||'medium');
+  Object.assign(G,{
+    curStage:snap.curStage,curLevel:snap.curLevel,
+    levelsCleared:snap.levelsCleared,stagesCleared:snap.stagesCleared,
+    pHP:snap.pHP,pATK:snap.pATK,pRES:snap.pRES,
+    playerMaxHP:snap.playerMaxHP,playerHP:snap.playerMaxHP,
+    score:snap.score,
+    attrsOwned:snap.attrsOwned,attrsEquipped:snap.attrsEquipped,
+  });
+  capPlayerStats();
+  G.viewOnly=true;
+  buildMap();
+  show('s-map');
+}
+
 function fullReset(){
   if(G&&G.isSyllabusRun)clearPracticeSave();
   else clearSave();
@@ -945,7 +987,7 @@ function fullReset(){
 function quitToTitle(){
 _battleSession++;
 stopBattleBgLoop();
-if(!G.isPractice)saveGame();
+if(!G.isPractice && !G.viewOnly)saveGame();   // ← EDIT THIS LINE
 show('s-title');
 refreshTitle();}
 
@@ -1035,10 +1077,11 @@ function refreshTitle(){
     cont.style.display='none';
     note.style.display='none';
   }
-  const contP=document.getElementById('continue-practice-btn');   // NEW
+  const contP=document.getElementById('continue-practice-btn');
   if(contP)contP.style.display=hasPracticeSave()?'block':'none';
+  const viewBtn=document.getElementById('view-completed-btn');    // ← ADD THESE 2 LINES
+  if(viewBtn)viewBtn.style.display=hasCompletedMap()?'block':'none';
 }
-
 /* =========================================================
    POWER-UP PICK SYSTEM  (startup + world upgrades + mid-level)
    =========================================================
@@ -1164,7 +1207,7 @@ updateTimerToggleBtn();
       if(si===4)cls+='sn-boss5 ';if(si===9)cls+='sn-boss10 ';
       node.className=cls.trim();
       node.innerHTML=`<div class="sn-orb"><div class="sn-num">S${si+1}</div><div class="sn-icon">${stg.icon}</div></div><div class="sn-label" style="color:${stg.isBoss?(si===4?'var(--orange)':'var(--red)'):'var(--teal)'}">${stg.name}</div><div class="sn-pips" id="pips-${si}"></div><div class="reward-badge">${stg.isBoss?'Boss Rewards!':'Level Drops'}</div>`;
-      if(!locked)node.addEventListener('click',()=>showStageLevels(si));
+      if(!locked && !G.viewOnly)node.addEventListener('click',()=>showStageLevels(si));
       wrap.appendChild(node);
     });
     stages.appendChild(wrap);
@@ -1179,7 +1222,7 @@ updateTimerToggleBtn();
         const bub=document.createElement('div');
         bub.className='sl-bubble '+(done?'sl-done':cur?'sl-cur':'sl-locked');
         bub.textContent='L'+(li+1);bub.title=lv.sub;
-        if(!locked2)bub.addEventListener('click',()=>{if(cur)enterLevel(G.curStage,li);});
+        if(!locked2 && !G.viewOnly)bub.addEventListener('click',()=>{if(cur)enterLevel(G.curStage,li);});
         slRow.appendChild(bub);
       });
       stages.appendChild(slRow);
@@ -1259,23 +1302,40 @@ function goToWorld(w){
   _curWorld=w;updateSlide();
 }
 
-/*swipe for phones*/
+/* swipe for phones AND mouse-drag on desktop */
 (function(){
-  let sx=0,sy=0;
   const wrap=document.querySelector('.map-slider-wrap');
-  if(!wrap)return;
-  document.addEventListener('touchstart',e=>{
-    if(!document.getElementById('s-map').classList.contains('on'))return;
-    sx=e.touches[0].clientX;sy=e.touches[0].clientY;
-  },{passive:true});
-  document.addEventListener('touchend',e=>{
-    if(!document.getElementById('s-map').classList.contains('on'))return;
-    const dx=e.changedTouches[0].clientX-sx;
-    const dy=e.changedTouches[0].clientY-sy;
-    if(Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)){
-      slideWorld(dx<0?1:-1);
-    }
-  },{passive:true});
+  const track=document.getElementById('map-track');
+  if(!wrap||!track) return;
+  let startX=0,startY=0,dragging=false,dragDX=0;
+
+  function isMapOn(){return document.getElementById('s-map').classList.contains('on');}
+
+  wrap.addEventListener('pointerdown',e=>{
+    if(!isMapOn())return;
+    dragging=true;dragDX=0;
+    startX=e.clientX;startY=e.clientY;
+    wrap.setPointerCapture(e.pointerId);
+    track.style.transition='none';
+  });
+  wrap.addEventListener('pointermove',e=>{
+    if(!dragging)return;
+    const dx=e.clientX-startX,dy=e.clientY-startY;
+    if(Math.abs(dy)>Math.abs(dx))return; // vertical intent, ignore
+    dragDX=dx;
+    const pct=(dx/(wrap.clientWidth||1))*100;
+    track.style.transform=`translateX(calc(-${_curWorld*100}% + ${pct}%))`;
+  });
+  function endDrag(){
+    if(!dragging)return;
+    dragging=false;
+    track.style.transition='';
+    if(Math.abs(dragDX)>60)slideWorld(dragDX<0?1:-1);
+    else updateSlide(); // snap back
+  }
+  wrap.addEventListener('pointerup',endDrag);
+  wrap.addEventListener('pointercancel',endDrag);
+  wrap.addEventListener('pointerleave',()=>{if(dragging)endDrag();});
 })();
 
 function isRunLocked(){
@@ -2552,9 +2612,10 @@ _battleSession++;
 stopBattleBgLoop();
   G.inBattle=false;
   G.timerModeLocked=false;
-  if(win&&!G.isPractice){
+    if(win&&!G.isPractice){
     G.score+=5000;
     G.inv.divine=(G.inv.divine||0)+3;
+    saveCompletedMapSnapshot();   // ← ADD THIS LINE
   }
   if(!G.isPractice){
   if(G.isSyllabusRun)clearPracticeSave();else clearSave();
