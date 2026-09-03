@@ -549,14 +549,17 @@ function capBossPanel(){
 }
 
 
-function renderAttrBar(){
+function renderAttrBar(where){
   if(typeof G==='undefined'||!G||!G.diff)return;
   _attrCSS(); normalizeAttrs();
-  const host=document.getElementById('s-map')||document.getElementById('s-home');
+  /* the ATTR bar lives ONLY in the adventure-map navbar */
+  const host = document.querySelector('#s-map .map-topbar');
   if(!host)return;
   let bar=document.getElementById('attr-bar');
-  if(!bar){bar=document.createElement('div');bar.id='attr-bar';bar.className='attr-bar';
-           host.insertBefore(bar,host.firstChild);}
+  if(!bar){bar=document.createElement('div');bar.id='attr-bar';bar.className='attr-bar';}
+  if(bar.parentElement!==host){
+    host.insertBefore(bar, document.getElementById('timer-toggle-btn')||null);
+  }
   const wasOpen=bar.classList.contains('open');
   const owned=(G.attrsOwned||[]).length,eq=G.attrsEquipped||[],n=attrSlots(),locked=attrsAreLocked();
   const icons=eq.length?eq.map(id=>(ATTR_BY_ID[id]||{}).icon||'').join(' '):'—';
@@ -1002,6 +1005,7 @@ stopBattleBgLoop();
 
 function resumeBattle(){
 _battleSession++; G._session=_battleSession;
+  document.body.classList.toggle('practice-mode', !!(G.isPractice||G.isSyllabusRun));
   const si=G.curStage,li=G.curLevel,stg=STAGES[si],lv=stg.levels[li];
   const isBoss=!!(lv.boss||lv.mini||stg.isBoss),worldIdx=stg.world-1;
   document.getElementById('player-spr').innerHTML=SPR_PLAYER;
@@ -1260,10 +1264,11 @@ updateTimerToggleBtn();
   for(let w=0;w<6;w++){
     const d=document.createElement('div');
     const isSoon=(w===5);
-    const worldUnlocked=isSoon?(STAGES[G.curStage].world>=5)
-                              :STAGES.some((s,i)=>s.world===w+1&&G.curStage>=i);
-    d.className='map-dot'+(w===_curWorld?' active':'')+(worldUnlocked?'':' locked')+(isSoon?' soon':'');
-    if(worldUnlocked)d.onclick=()=>goToWorld(w);
+    const reached=isSoon?(STAGES[G.curStage].world>=5)
+                        :STAGES.some((s,i)=>s.world===w+1&&G.curStage>=i);
+    d.className='map-dot'+(w===_curWorld?' active':'')+(reached?'':' preview')+(isSoon?' soon':'');
+    d.title=reached?`World ${w+1}`:`World ${w+1} — preview`;
+    d.onclick=()=>goToWorld(w);
     dots.appendChild(d);
   }
 
@@ -1271,13 +1276,12 @@ updateTimerToggleBtn();
   // jump to the world containing the current stage on first build
   _curWorld=STAGES[G.curStage].world-1;
   updateSlide();
-  renderAttrBar();
+  renderAttrBar('map');
 }
 
-function maxSlide(){
-  const w=STAGES[G.curStage].world-1;   // 0-based world index
-  return w>=4?5:w;                      // reached World 5 → COMING SOON viewable
-}
+const TOTAL_SLIDES=6;                 // 5 worlds + COMING SOON
+function maxSlide(){ return TOTAL_SLIDES-1; }   // browsing is always allowed
+
 
 function updateSlide(){
   const track=document.getElementById('map-track');
@@ -1439,6 +1443,7 @@ function loadLevel(si,li){
 _battleSession++; G._session=_battleSession;
   G.inBattle=true;
   G.timerModeLocked=true;
+    document.body.classList.toggle('practice-mode', !!(G.isPractice||G.isSyllabusRun));
   const stg=STAGES[si],lv=stg.levels[li];
   normalizeAttrs(); lockAttrsForWorld(si);
   const isBoss=!!(lv.boss||lv.mini||stg.isBoss),worldIdx=stg.world-1;
@@ -1613,6 +1618,7 @@ function onAnswer(chosen,btnEl,idx){
 
   if(correct){
     sfx.correct();G.streak++;G.combo=Math.min(8,1+Math.floor(G.streak/3));
+        bumpStat('correct');maxStat('bestStreak',G.streak);maxStat('bestCombo',G.combo);
     document.getElementById('sc-streak').textContent=G.streak;
     document.getElementById('sc-combo').textContent=`×${G.combo}`;
     const streakEl=document.getElementById('sc-streak');
@@ -1693,6 +1699,7 @@ function onAnswer(chosen,btnEl,idx){
 
   } else {
     sfx.wrong();G.streak=0;G.combo=Math.max(1,G.combo-1);
+        bumpStat('wrong');
     document.getElementById('sc-streak').textContent=0;
     document.getElementById('sc-combo').textContent=`×${G.combo}`;
     document.getElementById('sc-streak').classList.remove('streak-pop');
@@ -2281,6 +2288,9 @@ function handleLevelWin(){
   G.playerHP=Math.min(G.playerMaxHP,G.playerHP+attr.hp+Math.round(G.playerMaxHP*CLEAR_HEAL));
   const _healed=G.playerHP-_hpBeforeHeal;
   G.levelsCleared[si]=Math.max(G.levelsCleared[si],li+1);if(isFinalLevel)G.stagesCleared++;
+    bumpStat('levels'); if(isFinalLevel)bumpStat('stages');
+  if(lv.boss||lv.mini)bumpStat('bosses');
+  if(G.playerHP/G.playerMaxHP<=0.15)bumpStat('clutch');
   if(isFinalStage){
     const m=BOSS_MULT[24];
     if(m&&m.all){G.pHP=Math.floor(G.pHP*m.all);G.pATK=Math.floor(G.pATK*m.all);G.pRES=Math.floor(G.pRES*m.all);capPlayerStats();}
@@ -2578,6 +2588,7 @@ let _hintIdx=0;
 function cycleHint(){
   const el=document.getElementById('hint-text');
   if(!el)return;
+    if(typeof G!=='undefined'&&G&&(G.isPractice||G.isSyllabusRun))return;
   el.style.opacity='0';
   setTimeout(()=>{
     _hintIdx=(_hintIdx+1)%HINTS.length;
@@ -3136,7 +3147,7 @@ function openPowerupGuide(){
   refreshIcons();
 }
 
-function openTitleMenu(){document.getElementById('title-menu-modal').classList.add('on');refreshIcons();}
+function openTitleMenu(){document.getElementById('title-menu-modal').classList.add('on');updateAchBar();refreshIcons();}
 function confirmResetProgress(){
   closeModal('title-menu-modal');
   const hasNormal=hasSave(),hasPractice=hasPracticeSave();
@@ -3258,7 +3269,7 @@ function renderHome(){
     document.getElementById('home-stats-grid').innerHTML=html;
     refreshIcons();
   }
-  renderAttrBar();
+  renderAttrBar('map');
 }
 function closeModal(id){document.getElementById(id).classList.remove('on');}
 
@@ -3795,6 +3806,7 @@ function sylShowPracticeReady(){
 
 function startSyllabusPractice(){
   if(!SYL.genQuestions || !SYL.genQuestions.length) return;
+  bumpStat('syllabus');
   if(hasPracticeSave()){
     if(!confirm('You already have a Practice Mode run in progress. Starting a new one will erase it. Continue?')) return;
     clearPracticeSave();
@@ -4153,7 +4165,7 @@ window.endGame=function(win){
 
 /* ── BOSS ATTRIBUTES: auto-refresh the loadout bar on every screen paint ── */
 (function(){
-  ['renderHome','buildMap','resumeBattle','continueGame'].forEach(function(fn){
+  ['buildMap','resumeBattle','continueGame'].forEach(function(fn){
     if(typeof window[fn]!=='function')return;
     const _orig=window[fn];
     window[fn]=function(){
@@ -4163,6 +4175,101 @@ window.endGame=function(win){
     };
   });
 })();
+
+/* ══════════ ACHIEVEMENTS + ATTR DROPDOWN DISMISS ══════════ */
+const STATS_KEY='dqb3_stats';
+const _STAT_DEF={levels:0,stages:0,bosses:0,correct:0,wrong:0,
+                 bestStreak:0,bestCombo:0,clutch:0,syllabus:0};
+
+function getStats(){
+  try{return Object.assign({},_STAT_DEF,JSON.parse(localStorage.getItem(STATS_KEY))||{});}
+  catch(e){return Object.assign({},_STAT_DEF);}
+}
+function setStats(s){try{localStorage.setItem(STATS_KEY,JSON.stringify(s));}catch(e){}}
+function bumpStat(k,v){const s=getStats();s[k]=(s[k]||0)+(v||1);setStats(s);}
+function maxStat(k,v){const s=getStats();if(v>(s[k]||0)){s[k]=v;setStats(s);}}
+
+function _ownedAttrCount(){
+  let n=0;
+  const grab=k=>{try{const o=JSON.parse(localStorage.getItem(k));
+    if(o&&Array.isArray(o.attrsOwned))n=Math.max(n,o.attrsOwned.length);}catch(e){}};
+  grab(SAVE_KEY);grab(COMPLETED_KEY);
+  if(typeof G!=='undefined'&&G&&Array.isArray(G.attrsOwned))n=Math.max(n,G.attrsOwned.length);
+  return n;
+}
+function _bestScore(){const b=getBoard();return b.length?Math.max(...b.map(e=>e.score||0)):0;}
+
+const ACHIEVEMENTS=[
+ {g:'COMBAT',   ic:'⚔',  n:'FIRST BLOOD',    d:'Win your first battle',                 f:s=>s.levels>=1},
+ {g:'COMBAT',   ic:'🔥', n:'ON A ROLL',      d:'Reach a streak of 10',                  f:s=>s.bestStreak>=10},
+ {g:'COMBAT',   ic:'⚡', n:'UNSTOPPABLE',    d:'Reach a streak of 25',                  f:s=>s.bestStreak>=25},
+ {g:'COMBAT',   ic:'✖',  n:'MAX COMBO',      d:'Reach the ×8 combo cap',                f:s=>s.bestCombo>=8},
+ {g:'COMBAT',   ic:'💀', n:'BOSS SLAYER',    d:'Defeat your first boss or mini-boss',   f:s=>s.bosses>=1},
+ {g:'COMBAT',   ic:'👑', n:'WARLORD',        d:'Defeat 5 bosses',                       f:s=>s.bosses>=5},
+ {g:'COMBAT',   ic:'🩸', n:'LAST STAND',     d:'Win a battle with under 15% HP left',   f:s=>s.clutch>=1},
+
+ {g:'PROGRESS', ic:'🗺', n:'STAGE CLEARED',  d:'Clear all 5 levels of a stage',         f:s=>s.stages>=1},
+ {g:'PROGRESS', ic:'🏔', n:'VETERAN',        d:'Win 25 battles',                        f:s=>s.levels>=25},
+ {g:'PROGRESS', ic:'🌌', n:'CENTURION',      d:'Win 100 battles',                       f:s=>s.levels>=100},
+ {g:'PROGRESS', ic:'🛡', n:'COLLECTOR',      d:'Own 3 boss attributes',                 f:s=>_ownedAttrCount()>=3},
+ {g:'PROGRESS', ic:'🏆', n:'HIGH SCORER',    d:'Bank a run worth 10,000+',              f:s=>_bestScore()>=10000},
+ {g:'PROGRESS', ic:'🌟', n:'END OF REALITY', d:'Complete the full campaign',            f:s=>hasCompletedMap()},
+
+ {g:'STUDY',    ic:'📚', n:'SCHOLAR',        d:'Answer 250 questions correctly',        f:s=>s.correct>=250},
+ {g:'STUDY',    ic:'🔬', n:'OWN SYLLABUS',   d:'Generate a practice set from a syllabus',f:s=>s.syllabus>=1},
+ {g:'STUDY',    ic:'📅', n:'CONSISTENT',     d:'Reach a 3-day login streak',            f:()=>(getDaily().streak||0)>=3},
+ {g:'STUDY',    ic:'🗓', n:'FULL CYCLE',     d:'Reach a 7-day login streak',            f:()=>(getDaily().streak||0)>=7},
+];
+
+function achState(){
+  const s=getStats();
+  const rows=ACHIEVEMENTS.map(a=>{let ok=false;try{ok=!!a.f(s);}catch(e){}return{a,ok};});
+  return{rows,done:rows.filter(r=>r.ok).length,total:rows.length};
+}
+function updateAchBar(){
+  const st=achState();
+  const fill=document.getElementById('ach-bar-fill');
+  const cnt=document.getElementById('ach-bar-count');
+  if(fill)fill.style.width=Math.round(st.done/st.total*100)+'%';
+  if(cnt)cnt.textContent=st.done+'/'+st.total;
+}
+function openAchievements(){
+  const st=achState();
+  document.getElementById('ach-sub').innerHTML=
+    `<b style="color:var(--amber)">${st.done}</b> of ${st.total} unlocked`;
+  const groups=['COMBAT','PROGRESS','STUDY'];
+  const cols={COMBAT:'var(--red)',PROGRESS:'var(--teal)',STUDY:'var(--blue)'};
+  document.getElementById('ach-list').innerHTML=groups.map(g=>{
+    const items=st.rows.filter(r=>r.a.g===g).map(({a,ok})=>`
+      <div class="ach-item${ok?' on':''}">
+        <div class="ach-ic">${ok?a.ic:'🔒'}</div>
+        <div class="ach-tx"><div class="ach-n">${a.n}</div><div class="ach-d">${a.d}</div></div>
+        <div class="ach-mk">${ok?'✔':''}</div>
+      </div>`).join('');
+    return `<div class="ach-sec">
+      <div class="ach-cat" style="color:${cols[g]};border-color:${cols[g]}">${g}</div>
+      <div class="ach-grid">${items}</div></div>`;
+  }).join('');
+  document.getElementById('ach-modal').classList.add('on');
+  refreshIcons();
+}
+
+/* ── EXPORT: everything above lives inside the ARENA-FX IIFE, so the rest
+      of dino.js and the HTML onclick= handlers cannot see it. ── */
+window.getStats         = getStats;
+window.setStats         = setStats;
+window.bumpStat         = bumpStat;
+window.maxStat          = maxStat;
+window.achState         = achState;
+window.updateAchBar     = updateAchBar;
+window.openAchievements = openAchievements;
+
+/* close the ATTR dropdown when clicking anywhere else */
+document.addEventListener('pointerdown',e=>{
+  const bar=document.getElementById('attr-bar');
+  if(bar&&bar.classList.contains('open')&&!bar.contains(e.target))bar.classList.remove('open');
+},true);
+
 
 /* ---------- boot ---------- */
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',injectLayers);
