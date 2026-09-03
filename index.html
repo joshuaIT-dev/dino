@@ -40,6 +40,14 @@
   <div class="modal-box" style="max-width:340px;border-color:var(--blue);box-shadow:0 0 40px rgba(74,158,255,.2)">
     <div class="modal-title" style="color:var(--blue)">MENU</div>
     <div style="width:100%;display:flex;flex-direction:column;gap:8px">
+          <button class="ach-bar" onclick="closeModal('title-menu-modal');openAchievements()">
+      <span class="ach-bar-ic">🏅</span>
+      <span class="ach-bar-txt">
+        <span class="ach-bar-title">ACHIEVEMENTS</span>
+        <span class="ach-bar-track"><span class="ach-bar-fill" id="ach-bar-fill"></span></span>
+      </span>
+      <span class="ach-bar-count" id="ach-bar-count">0/15</span>
+    </button>
       <button class="pbtn y" style="width:100%" onclick="closeModal('title-menu-modal');show('s-lb');renderLB()">LEADERBOARD</button>
       <button class="pbtn b" style="width:100%" onclick="closeModal('title-menu-modal');openIntro()">HOW TO PLAY</button>
       <button class="pbtn b" style="width:100%" onclick="closeModal('title-menu-modal');openPowerupGuide()">POWERUP GUIDE</button>
@@ -400,6 +408,16 @@
   </div>
 </div>
 
+<!-- ACHIEVEMENTS MODAL -->
+<div class="modal-overlay" id="ach-modal">
+  <div class="modal-box" style="max-width:560px;border-color:var(--amber);box-shadow:0 0 40px rgba(232,161,58,.2)">
+    <div class="modal-title" style="color:var(--amber)">ACHIEVEMENTS</div>
+    <div class="modal-sub" id="ach-sub">—</div>
+    <div id="ach-list" style="width:100%;max-height:62vh;overflow-y:auto"></div>
+    <button class="pbtn sm" style="color:var(--dim);border-color:var(--border)" onclick="closeModal('ach-modal')"><i data-lucide="x"></i> CLOSE</button>
+  </div>
+</div>
+
 <!-- SYLLABUS SCAN -->
 <div id="s-syllabus" class="screen">
   <div class="syl-topbar">
@@ -546,4 +564,3 @@
 <script src="dino.js"></script>
 </body>
 </html>
-
