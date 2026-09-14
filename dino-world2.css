@@ -1,0 +1,143 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   dino-world2.css · v2.2.0 · THE MECHANICS SKIN
+   Load after dino-world.css. Styles what dino-world2.js renders: the world
+   labels past the margin, the seam serifs, the spend budget, the Unbroken
+   Page meter and the END slide.
+   The dialogue box, the break animation and the codex are NOT here —
+   author.js injects its own stylesheet (#author-css).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── §1 · WORLD LABELS 6-10 + END ─────────────────────────────────────── */
+.world-label.wl-6 {color:#8a7f9c;border-color:rgba(138,127,156,.45)}
+.world-label.wl-7 {color:#3a7a86;border-color:rgba(58,122,134,.45)}
+.world-label.wl-8 {color:#8a8676;border-color:rgba(138,134,118,.45)}
+.world-label.wl-9 {color:#4a6f9c;border-color:rgba(74,111,156,.45)}
+.world-label.wl-10{color:#e6e2d8;border-color:rgba(230,226,216,.45)}
+.world-label.wl-11,
+.world-label.wl-end{
+  color:#ffcf6b;border-color:rgba(255,207,107,.55);
+  text-shadow:0 0 14px rgba(255,207,107,.35);
+  animation:w2-breathe 4.2s ease-in-out infinite}
+@keyframes w2-breathe{0%,100%{opacity:.78}50%{opacity:1}}
+
+/* once the margin is crossed the map never quite sits still again */
+body.w2-gate-open #s-map .map-track{filter:saturate(.92)}
+body.w2-gate-open #s-map .world-label.wl-soon{letter-spacing:3px}
+
+/* ─── §2 · THE FIVE SERIFS (map topbar) ────────────────────────────────── */
+/* This rule exists only to stop the 10-second hold popping a context menu.
+   It must NOT restate flex-wrap: dino-world.css owns the bar's wrapping per
+   breakpoint, and this file loads later — declaring nowrap here overrode the
+   ≤640px wrap rule and made the bar overflow off-screen instead of wrapping. */
+.map-topbar{
+  display:flex;align-items:center;position:relative;
+  -webkit-touch-callout:none}
+/* no margin-left:auto here — .map-attr-row already claims the auto gap
+   (dino-world.css); two claims split the row and pushed the marks adrift */
+#w2-serifs{
+  display:flex;align-items:center;gap:9px;
+  margin-right:8px;
+  padding:6px 10px;border-radius:9px;
+  flex:0 0 auto;position:relative;z-index:5;
+  cursor:default;user-select:none;-webkit-user-select:none;touch-action:none}
+.w2-serif{
+  width:2px;height:11px;background:rgba(255,255,255,.16);
+  display:inline-block;transition:background .4s,box-shadow .4s,height .3s}
+.w2-serif.on{
+  width:5px;height:12px;background:#fff;
+  box-shadow:0 0 8px rgba(255,255,255,.55)}
+/* applied by W2.bindHold for the length of the hold */
+#w2-serifs.w2-holding{background:rgba(255,255,255,.05)}
+#w2-serifs.w2-holding .w2-serif{animation:w2-serif-hold 10s linear forwards}
+@keyframes w2-serif-hold{from{opacity:.4}to{opacity:1;background:#fff}}
+.map-topbar.w2-holding{user-select:none;-webkit-user-select:none}
+
+/* The marks need an explicit order wherever the bar wraps, or they default to
+   order:0 and sort ahead of the title. Sequence: title 1 · ATTR 2 · timer 3 ·
+   marks 4 · QUIT 5 · stats 6 (full-width, last). */
+@media(max-width:900px){
+  #w2-serifs{order:4;margin-right:0}
+}
+@media(max-width:420px){
+  .map-topbar{row-gap:4px}
+  #w2-serifs{margin:0;padding:6px 4px;gap:7px}
+  /* the label used to be dropped here — Space Mono labels are compact
+     enough that the whole bar fits again. Owned by dino-ui.css §10. */
+}
+
+/* ─── §3 · TOAST — the author's one-liners (rendered by author.js) ─────── */
+#w2-toast{
+  position:fixed;left:50%;top:0;transform:translate(-50%,-140%);
+  z-index:9500;max-width:min(560px,92vw);
+  padding:11px 18px;text-align:center;
+  font-family:var(--px,inherit);font-size:12px;line-height:1.5;letter-spacing:.4px;
+  color:#fff;background:rgba(6,6,8,.94);
+  border:1px solid rgba(255,255,255,.22);border-top:none;
+  border-radius:0 0 10px 10px;
+  box-shadow:0 8px 34px rgba(0,0,0,.7);
+  transition:transform .5s cubic-bezier(.2,.8,.2,1);
+  pointer-events:none}
+#w2-toast.on{transform:translate(-50%,0)}
+
+/* ─── §4 · BATTLE HUD · spend budget ───────────────────────────────────── */
+/* The USES/PAGES block. Desktop: bottom of the inventory panel. Phone:
+   W2.placeHUD() re-parents it into #hint-bar and the tip hides (the HUD is
+   the more useful thing to read on the one line a phone can spare). */
+#w2-hud{display:none}
+#w2-hud.on{display:flex;flex-direction:column;gap:6px;margin-top:auto;padding-top:8px}
+.pu-panel #w2-hud.on{border-top:1px solid var(--border)}
+#hint-bar #w2-hud.on{margin:0;padding:0;flex:1 1 auto;flex-direction:row;gap:8px;align-items:center}
+#hint-bar #w2-hud #w2-budget,#hint-bar #w2-hud #w2-pages{margin:0;flex:1 1 auto;min-width:0}
+#hint-bar #w2-hud #w2-pages .w2-pg-row{font-size:9px;gap:6px}
+/* the tip gives up its row only on the phone layout, where the HUD is the
+   thing that actually moved in there — on desktop the tip keeps its line */
+body.w2-hud-on.w2-hud-hint #hint-bar>span:first-child,
+body.w2-hud-on.w2-hud-hint #hint-bar #hint-text{display:none}
+
+#w2-budget{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  margin:0 10px 6px;padding:5px 10px;
+  border:1px solid rgba(255,255,255,.13);border-radius:10px;
+  background:rgba(0,0,0,.34);
+  font-size:10px;letter-spacing:1px}
+#w2-budget .w2-b-lbl{color:#e6e2d8;font-weight:800;opacity:.85}
+.w2-pip{width:8px;height:8px;border-radius:50%;display:inline-block;
+  background:#fff;opacity:.85;margin-right:2px}
+.w2-pip-out{background:transparent;border:1px solid rgba(255,255,255,.3);opacity:.4}
+
+/* ─── §5 · THE UNBROKEN PAGE meter ─────────────────────────────────────── */
+#w2-pages{
+  margin:0 10px 6px;padding:7px 11px;
+  border:1px solid rgba(255,255,255,.30);border-radius:10px;
+  background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(0,0,0,.42))}
+#w2-pages .w2-pg-row{display:flex;justify-content:space-between;gap:12px;font-size:10px;
+  letter-spacing:1px;color:#fff;opacity:.85;padding:1px 0}
+#w2-pages .w2-str-2{color:var(--orange,#ff7a30);opacity:1}
+#w2-pages .w2-str-3{color:var(--red,#e84545);opacity:1}
+#w2-pages .w2-pg-pen{opacity:.7;border-top:1px dashed rgba(255,255,255,.18);
+  margin-top:3px;padding-top:3px}
+
+/* the HP bar of something that does not lose HP */
+.hp-bar.boss-bar-immortal{border-color:rgba(255,255,255,.55)}
+.hp-bar.boss-bar-immortal .hp-fill{
+  background:repeating-linear-gradient(90deg,#e8e4d6 0 6px,#fff 6px 12px)!important;
+  box-shadow:0 0 10px rgba(255,255,255,.55)}
+
+/* ─── §6 · THE LAST SLIDE · ??? → THE UNWRITTEN ────────────────────────── */
+.soon-orb.w2-door-orb{cursor:pointer;user-select:none;-webkit-user-select:none;
+  -webkit-touch-callout:none;touch-action:manipulation}
+.soon-wrap .soon-orb.w2-holding{box-shadow:0 0 0 3px rgba(255,255,255,.25),
+  0 0 26px rgba(255,255,255,.18)}
+.soon-orb.w2-door-open{animation:w2-flicker 2.4s ease-in-out infinite}
+@keyframes w2-flicker{
+  0%,100%{opacity:1;transform:translateY(0)}
+  42%{opacity:.72;transform:translateY(-1px)}
+  61%{opacity:1}
+  74%{opacity:.85;transform:translateY(1px)}}
+
+/* ─── §7 · phones ──────────────────────────────────────────────────────── */
+@media(max-width:600px){
+  #w2-serifs{gap:7px;padding:5px 7px}
+  #w2-toast{font-size:11px;padding:9px 13px}
+  #w2-budget,#w2-pages{margin-left:6px;margin-right:6px}
+}
