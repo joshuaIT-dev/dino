@@ -1,0 +1,158 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   TYPE BATTLE · BETA — worlds 1-5, twelve elements, one chart
+
+   Loads LAST and touches nothing that is not prefixed `pk-` or scoped to
+   `body.pk-on`. Take these two files out of dino.html and the game is exactly
+   what it was.
+
+   The art is deliberately boxes. This is a beta: the characters are coloured
+   crates with a glyph, sized and positioned exactly where real sprites will
+   go, so the layout is already correct when the art lands.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root{
+  --pk-nature:#57c06b;  --pk-earth:#b08a4a;   --pk-water:#3a8ee0;
+  --pk-fire:#ef6b3a;    --pk-ice:#67d6e8;     --pk-poison:#a563d8;
+  --pk-electric:#f2cb3c;--pk-shadow:#6b5b96;  --pk-void:#8f4fd0;
+  --pk-light:#ffe08a;   --pk-time:#4fd0c0;    --pk-chaos:#ff5c8a;
+  --pk-ink:#08070f;
+}
+
+/* ── the character box ────────────────────────────────────────────────── */
+.pk-box{
+  --c:var(--pk-nature);
+  width:var(--pk-w,62px);height:var(--pk-h,66px);
+  position:relative;
+  background:
+    linear-gradient(160deg,color-mix(in srgb,var(--c) 82%,#fff) 0%,var(--c) 42%,
+                    color-mix(in srgb,var(--c) 72%,#000) 100%);
+  border:3px solid var(--pk-ink);
+  box-shadow:
+    inset 0 0 0 2px color-mix(in srgb,var(--c) 60%,#fff),
+    inset 0 -8px 0 0 color-mix(in srgb,var(--c) 55%,#000),
+    0 3px 0 0 rgba(0,0,0,.55);
+  image-rendering:pixelated;
+  display:flex;align-items:center;justify-content:center;
+  font-size:calc(var(--pk-h,66px) * .42);
+  line-height:1;
+  user-select:none;
+}
+/* two studs, so the box reads as a character facing you rather than a swatch */
+.pk-box::before,.pk-box::after{
+  content:'';position:absolute;top:22%;width:7px;height:7px;
+  background:var(--pk-ink);
+}
+.pk-box::before{left:20%}
+.pk-box::after{right:20%}
+.pk-box.pk-boss{--pk-w:86px;--pk-h:90px;border-width:4px}
+
+#boss-spr .pk-box{transform:scaleX(-1)}
+#boss-spr .pk-box>span{transform:scaleX(-1)}
+
+/* ── the matchup chip, in the battle ──────────────────────────────────── */
+#pk-chip{
+  display:none;align-items:center;gap:7px;justify-content:center;
+  font-family:var(--px);font-size:8.5px;letter-spacing:.1em;
+  padding:5px 9px;border:1px solid var(--border);border-radius:var(--r1);
+  background:var(--panel2);color:var(--dim);
+  margin:0 0 6px;white-space:nowrap;overflow:hidden;
+}
+body.pk-on #pk-chip{display:flex}
+#pk-chip .pk-vs{color:var(--faint,#5E5878)}
+#pk-chip b{font-family:var(--px);font-size:9.5px;letter-spacing:.06em}
+#pk-chip.pk-super{border-color:var(--good,#5BFF9E);color:var(--good,#5BFF9E)}
+#pk-chip.pk-weak{border-color:var(--red,#FF5C72);color:var(--red,#FF5C72)}
+#pk-chip .pk-pip{
+  width:13px;height:13px;border:2px solid var(--pk-ink);flex:0 0 auto;
+}
+
+/* ── the roster ───────────────────────────────────────────────────────── */
+/* `.screen.on` is `display:flex` with no direction of its own — every screen
+   sets that itself (#s-title, #s-home each do). Ours did not, so it inherited
+   `row`: the heading became a one-word-wide column down the left and the card
+   grid ran off the side of the phone. */
+#s-pkroster{
+  flex-direction:column;align-items:stretch;
+  width:100%;max-width:820px;margin:0 auto;
+  padding:22px 16px 28px;
+  overflow-y:auto;
+}
+.pk-head{text-align:center;margin-bottom:18px;width:100%}
+.pk-title{
+  font-family:var(--px);font-size:13px;letter-spacing:.1em;color:var(--accent);
+  line-height:1.7;margin-bottom:8px;
+}
+.pk-sub{font-size:12.5px;color:var(--dim);line-height:1.5;max-width:44ch;margin:0 auto}
+.pk-beta{
+  display:inline-block;margin-top:9px;
+  font-family:var(--px);font-size:7.5px;letter-spacing:.14em;
+  color:var(--amber,#E8A13A);border:1px solid var(--amber,#E8A13A);
+  border-radius:var(--r1);padding:3px 7px;
+}
+
+.pk-grid{
+  display:grid;gap:8px;
+  grid-template-columns:repeat(auto-fill,minmax(148px,1fr));
+  /* grid items stretch down their row by default, which made every card as
+     tall as the tallest one in it — a column of half-empty boxes */
+  align-items:start;
+  width:100%;max-width:760px;margin:0 auto 16px;
+}
+.pk-card{
+  display:flex;gap:9px;align-items:flex-start;text-align:left;
+  background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);
+  padding:9px;cursor:pointer;min-width:0;
+  transition:border-color .15s,background .15s;
+}
+.pk-card:hover{border-color:var(--border2)}
+.pk-card.on{border-color:var(--accent);background:rgba(255,211,78,.08)}
+.pk-card .pk-box{--pk-w:34px;--pk-h:36px;flex:0 0 auto;font-size:15px}
+.pk-card .pk-box::before,.pk-card .pk-box::after{width:4px;height:4px}
+.pk-info{min-width:0;display:flex;flex-direction:column;gap:2px}
+.pk-name{
+  font-family:var(--px);font-size:8.5px;letter-spacing:.07em;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.pk-el{font-size:10.5px;color:var(--dim2);text-transform:uppercase;letter-spacing:.08em}
+.pk-vs-line{font-size:10.5px;line-height:1.45;color:var(--dim)}
+.pk-vs-line .up{color:var(--good,#5BFF9E)}
+.pk-vs-line .down{color:var(--red,#FF5C72)}
+
+.pk-bar{
+  position:sticky;bottom:0;display:flex;gap:8px;justify-content:center;
+  padding:10px 0 0;background:linear-gradient(transparent,var(--bg) 40%);
+}
+
+/* ── the swap strip on the map ────────────────────────────────────────── */
+#pk-swap{
+  display:none;align-items:center;gap:10px;justify-content:center;
+  margin:0 auto 10px;padding:7px 11px;max-width:420px;
+  background:var(--panel2);border:1px solid var(--border);border-radius:var(--r2);
+}
+body.pk-on #pk-swap{display:flex}
+#pk-swap .pk-box{--pk-w:26px;--pk-h:28px;font-size:12px}
+#pk-swap .pk-box::before,#pk-swap .pk-box::after{width:3px;height:3px}
+#pk-swap .pk-cur{
+  font-family:var(--px);font-size:8px;letter-spacing:.08em;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;
+}
+#pk-swap .pbtn{flex:0 0 auto}
+
+/* the element each stage runs, on the node, so the swap can be decided
+   before entering rather than discovered inside */
+.pk-node-el{
+  position:absolute;top:3px;right:3px;
+  width:12px;height:12px;border:2px solid var(--pk-ink);border-radius:2px;
+  pointer-events:none;
+}
+
+@media (max-width:520px){
+  .pk-grid{grid-template-columns:repeat(auto-fill,minmax(138px,1fr));gap:6px}
+  .pk-card{padding:7px;gap:7px}
+  .pk-title{font-size:11px}
+  #pk-chip{font-size:7.5px;padding:4px 7px;gap:5px}
+  #pk-swap{gap:7px;padding:6px 8px}
+}
+@media (prefers-reduced-motion:reduce){
+  .pk-card{transition:none}
+}

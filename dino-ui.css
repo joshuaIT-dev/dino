@@ -1,0 +1,2829 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   dino-ui.css · SINGLE-POINT SKIN · v1
+   Load LAST, after dino.css → dino-world.css → dino-world2.css.
+
+   This file changes how the game LOOKS. It does not change how it is LAID OUT.
+   No display, grid-template, flex-direction, position or width rule here
+   re-places anything — every existing breakpoint behaves exactly as it did.
+
+   THE RULE
+     --accent  gold   #FFD34E  attention: one primary per screen, current
+                               stage, score, timer, focus, hover
+     --good    green  #5BFF9E  success / yours: player HP, correct answer,
+                               cleared node, your turn, beneficial status
+     --bad     red    #FF5C72  danger / against you: enemy HP, wrong answer,
+                               damage, harmful status
+     everything else is neutral. Retired hues resolve to --dim so nothing
+     breaks, then get softened per-component in §4.
+
+   Delete the <link> to this file to revert the whole thing.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+
+/* ═══ §1 · TOKENS ═════════════════════════════════════════════════════════ */
+:root{
+  /* ground — nine neutrals with a slight indigo bias */
+  --bg:#07070E;
+  --bg2:#0B0B16;
+  --panel:#11111F;
+  --panel2:#191930;
+  --panel3:#232342;
+  --border:#2A2A4A;
+  --border2:#3B3B63;
+
+  /* ink */
+  --text:#EEEFFB;
+  --dim:#A5A8CC;          /* was #6b6b85 — 3.1:1, now 8.5:1 */
+  --dim2:#6E719A;         /* labels and captions only */
+
+  /* the three hues */
+  --accent:#FFD34E;
+  --good:#5BFF9E;
+  --bad:#FF5C72;
+
+  /* ── legacy names kept so no JS needs editing ───────────────────────────
+     dino.js, author.js and dinodex.js all reference these. They now resolve
+     into the three-hue system instead of twelve separate colours. */
+  --yellow:var(--accent);
+  --amber:var(--accent);
+  --orange:var(--accent);
+  --green:var(--good);
+  --red:var(--bad);
+  --teal:var(--dim);
+  --cyan:var(--dim);
+  --blue:var(--dim);
+  --purple:var(--dim);
+  --pink:var(--dim);
+  --magenta:var(--dim);
+  --grey:var(--dim2);
+
+  /* type */
+  --px:'Press Start 2P','Courier New',monospace;
+  --vt:'Space Mono','SFMono-Regular',Consolas,'Courier New',monospace;
+  --mono:var(--vt);
+
+  /* radii */
+  --r1:4px; --r2:8px; --r3:12px;
+}
+
+/* One reusable recipe for every micro-label that used to be 5–9px pixel type.
+   Space Mono 700 at 10.5px is optically larger than Press Start 2P at 6px
+   and still reads as a machine readout. */
+.dq-label,
+.gtb-lbl,.pp-label,.attr-title,.pu-header,.effects-title,.effect-name,
+.f-name,.home-card-lbl,.hq-label,.hpr-title,.name-label,.end-score-lbl,
+.end-diff-tag,.syl-eyebrow,.syl-subj-name,.pug-name,.pug-cat-label,
+.ach-n,.ach-cat,.ach-bar-title,.sn-label,.pu-name,.pu-pick-card .card-name,
+.pu-pick-card .card-rarity,.pu-pick-progress,.lb-mode,.lb-diff,.syl-pill,
+.sd-cell .sd-day,.revive-slot .rs-name,.revive-slot .rs-count,
+.q-tag,.q-type,.turn-indicator,.home-stat-divider,.home-empty-title,
+.home-extra-btn,.ig-world-chip .lbl,.ig-cmp-table th,.aw-text,.es-lbl,
+.stat span,.pp-res b,.syl-practice-lbl,.wl-soon,.soon-title{
+  font-family:var(--vt);
+  font-weight:700;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+}
+
+
+/* ═══ §2 · BASE ═══════════════════════════════════════════════════════════ */
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--vt);
+  -webkit-font-smoothing:antialiased;
+}
+
+/* the scanline overlay was pure black at 5% — on the new ground it just
+   muddied the panels. Slightly stronger, slightly cooler, still subtle. */
+body::before{
+  background:repeating-linear-gradient(0deg,
+    transparent 0 3px,rgba(3,3,10,.16) 3px 4px);
+}
+
+/* mobile browser chrome was eating the bottom of every full-height screen */
+.screen,#s-title,#s-home,#s-map,#s-game,#s-syllabus,
+#s-diff,#s-attrwin,#s-pickpu,#s-end,#s-lb{
+  min-height:100vh;
+  min-height:100dvh;
+}
+#s-title,#s-home,#s-map,#s-game,#s-syllabus{
+  height:100vh;
+  height:100dvh;
+}
+/* ...but below the tablet breakpoint the battle screen has to be free to GROW.
+   dino.css sets height:auto there for exactly that reason; pinning it to the
+   viewport made a short phone push the question panel under the fixed
+   inventory dock instead of scrolling. */
+@media (max-width:960px){
+  #s-game{height:auto;min-height:100vh;min-height:100dvh}
+}
+#s-end.on{height:100vh;height:100dvh}
+
+/* there was no focus style at all — keyboard and gamepad users were flying
+   blind through every menu */
+a:focus-visible,button:focus-visible,input:focus-visible,
+select:focus-visible,textarea:focus-visible,
+[tabindex]:focus-visible,.choice:focus-visible,.stage-node:focus-visible,
+.home-quick-card:focus-visible,.diff-card:focus-visible,
+.pu-pick-card:focus-visible,.syl-subj-card:focus-visible{
+  outline:2px solid var(--accent);
+  outline-offset:2px;
+  border-radius:var(--r1);
+}
+
+::selection{background:rgba(255,211,78,.28);color:var(--text)}
+
+/* scrollbars, everywhere rather than only in .g-main */
+*{scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--border2)}
+
+
+/* ═══ §3 · TYPE SCALE ═════════════════════════════════════════════════════
+   Space Mono is a much wider face than VT323 — roughly 1.5× the apparent
+   size at the same px value. Every body size below is rescaled so the text
+   is MORE readable without occupying more room than it used to.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* display — Press Start 2P, never below 10px */
+.game-title{font-size:clamp(18px,4.4vw,28px);line-height:1.8;letter-spacing:.04em;
+  color:var(--accent);text-shadow:0 4px 0 rgba(0,0,0,.55),0 0 34px rgba(255,211,78,.22)}
+#s-title .game-title{font-size:clamp(18px,4.4vw,28px);line-height:1.8;letter-spacing:.04em}
+.sub-title,#s-title .sub-title{
+  font-family:var(--vt);font-weight:700;font-size:12px;
+  letter-spacing:.34em;color:var(--dim2);text-transform:uppercase;
+}
+
+/* screen titles go neutral — a title is not an action, so it does not get
+   the accent. This is most of the discipline in one rule. */
+.home-title-txt,.map-title-txt,.lb-title,.syl-title-txt,
+.modal-title,.aw-title,.end-title,.pu-pick-title,.syl-h1{
+  color:var(--text);
+}
+.home-title-txt{font-size:12px}
+.map-title-txt{font-size:11px}
+.lb-title{font-size:12px}
+.syl-title-txt{font-size:11px}
+.modal-title{font-size:12px;line-height:1.7}
+.syl-h1{font-family:var(--px);font-size:12px;line-height:1.7}
+.aw-title{font-size:12px;text-shadow:0 2px 0 rgba(0,0,0,.55)}
+.end-title{font-size:13px;text-shadow:0 2px 0 rgba(0,0,0,.55)}
+
+/* micro-labels — the recipe from §1, sized here */
+.gtb-lbl,.pp-label,.attr-title,.effects-title,.home-card-lbl,
+.syl-eyebrow,.name-label,.end-score-lbl,.home-stat-divider{
+  font-size:10.5px;color:var(--dim2);
+}
+.pu-header{font-size:10.5px;color:var(--dim2)}
+.f-name{font-size:9.5px;color:var(--dim2);letter-spacing:.16em}
+.effect-name{font-size:10px}
+.sn-label{font-size:9.5px;color:var(--dim2);max-width:80px;line-height:1.4}
+.pu-name{font-size:9.5px;line-height:1.4;color:var(--dim)}
+.hq-label{font-size:10px;color:var(--dim)}
+.hpr-title{font-size:10.5px}
+.syl-subj-name{font-size:10.5px}
+.pug-name{font-size:10.5px}
+.ach-n{font-size:10.5px;line-height:1.45}
+.ach-bar-title{font-size:10.5px}
+.pug-cat-label,.ach-cat{font-size:10.5px}
+.lb-mode,.lb-diff{font-size:9.5px}
+.syl-pill{font-size:9.5px}
+.sd-cell .sd-day{font-size:9.5px}
+.end-diff-tag{font-size:10px}
+.pu-pick-card .card-name{font-size:10px}
+.pu-pick-card .card-rarity{font-size:9.5px}
+.pu-pick-progress{font-size:10.5px}
+.home-extra-btn{font-size:10.5px}
+.es-lbl{font-size:9.5px;color:var(--dim2)}
+.aw-text{font-size:10.5px;letter-spacing:.1em;line-height:1.6}
+.aw-row.aw-big .aw-text{font-size:10px;line-height:1.7}
+.soon-title{font-size:11px;letter-spacing:.16em}
+.ig-world-chip .lbl{font-size:9.5px}
+.ig-cmp-table th{font-size:9.5px}
+.syl-practice-lbl{font-size:10px;color:var(--dim2)}
+
+/* single glyphs stay pixel type — they read fine and carry the identity */
+.c-letter{font-family:var(--px);font-size:9px;color:var(--dim2)}
+.sn-num{font-family:var(--px);font-size:10px}
+.sl-bubble{font-family:var(--px);font-size:9px}
+.pu-count{font-family:var(--px);font-size:8px;color:var(--accent)}
+.aw-val{font-family:var(--px);font-size:10px}
+.es-val{font-family:var(--px);font-size:12px}
+.gtb-tag{font-family:var(--px);font-size:11px}
+
+/* body text — rescaled for Space Mono's wider metrics */
+.q-text{font-size:16px;line-height:1.5;text-wrap:balance}
+body.practice-mode .q-text{font-size:17px}
+.choice{font-size:13.5px;line-height:1.4}
+.choice.len-m{font-size:clamp(12px,1.1vw + 9px,13px)}
+.choice.len-l{font-size:clamp(11.5px,1vw + 8.5px,12.5px);line-height:1.35}
+.choice.len-x{font-size:clamp(11px,.9vw + 8px,12px);line-height:1.3}
+.msg-bar{font-size:12.5px;letter-spacing:.01em;line-height:1.45}
+#hint-text{font-size:12.5px;line-height:1.4;color:var(--dim)}
+.hp-txt{font-size:11.5px;color:var(--dim);font-variant-numeric:tabular-nums}
+.pp-passive{font-size:12px;color:var(--dim)}
+#pp-player,#pp-boss{font-size:12px;line-height:18px}
+.attr-row{font-size:11.5px}
+.attr-lbl{font-size:10.5px;color:var(--dim2)}
+.effect-turns{font-size:11px;color:var(--dim2);font-variant-numeric:tabular-nums}
+.diff-detail{font-size:12px;line-height:1.6;color:var(--dim)}
+.modal-sub{font-size:13px;color:var(--dim)}
+.home-streak-txt{font-size:12px;color:var(--dim)}
+.home-stat-item span{font-size:10.5px;color:var(--dim2);letter-spacing:.08em;text-transform:uppercase;font-weight:700}
+.hpr-sub{font-size:12px;color:var(--dim)}
+.title-note{font-size:12.5px;line-height:1.6}
+.lb-sub-row{font-size:11.5px}
+.lb-name{font-size:11px}
+.lb-rank{font-size:14px;font-variant-numeric:tabular-nums}
+.lb-score{font-size:14px;font-variant-numeric:tabular-nums}
+.reward-pop{font-size:13px}
+.sd-cell .sd-amt{font-size:11px;color:var(--dim2)}
+.aw-sub{font-size:12.5px;color:var(--dim)}
+.pu-pick-card .card-desc{font-size:11.5px;color:var(--dim)}
+.pu-empty{font-size:11.5px;color:var(--dim2)}
+.pug-desc{font-size:11.5px;color:var(--dim);line-height:1.45}
+/* The canon line. One notch smaller and quieter than the mechanical
+   description above it, because a player scanning for "what does this do"
+   must not have to read past the poem to find the number. */
+.pug-lore{font-size:11px;color:var(--dim2);line-height:1.5;font-style:italic;margin-top:5px}
+.ach-d{font-size:11px;color:var(--dim);line-height:1.45}
+.tf-item span{font-size:10.5px;color:var(--dim2)}
+.soon-sub{font-size:12.5px;color:var(--dim);line-height:1.65}
+.map-attr-row{font-size:12px;color:var(--dim2)}
+.map-attr-row b{color:var(--text);font-weight:700}
+.reward-badge{font-size:10.5px;color:var(--dim2)}
+.wp-k{color:var(--dim2)}
+.revive-slot .rs-desc{font-size:11px;color:var(--dim2)}
+
+/* numerals line up in columns everywhere they are compared */
+.lb-score,.lb-rank,.hp-txt,.map-attr-row,.home-stat-item b,
+.end-score-hero,.streak-count,.home-streak-num,.q-timer,
+.es-val,.gtb-tag,#sc-score,#sc-streak,#sc-combo,.attr-val{
+  font-variant-numeric:tabular-nums;
+}
+
+
+/* ═══ §4 · COLOUR DISCIPLINE ══════════════════════════════════════════════
+   The retired hues resolve to --dim, which is right for text but too loud
+   for a border or a fill. These rules put those surfaces back to neutral.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* borders that used to be a colour are hairlines again */
+.revive-slot,.syl-card,.syl-subj-chip,.syl-qtag,.pick-world-banner,
+.pick-auto-toast,.home-practice-resume,.home-extra-btn.syl-cta,
+.modal-box,.soon-wrap,.lb-card,.diff-card,.title-note,
+.end-win-banner,.home-empty-cta,.ig-callout,.aw-gains,.end-stats{
+  border-color:var(--border);
+}
+.modal-box{
+  border-width:1px;
+  border-radius:var(--r3);
+  box-shadow:0 24px 70px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.03);
+  background:var(--panel);
+}
+/* The accent modals used to carry their border-colour and glow as inline
+   attributes, which meant no stylesheet could reach them. The markup now
+   carries only a size class (.mb-340 … .mb-600, see §14) and the rule above
+   is the single owner of the frame — no !important needed. */
+.modal-overlay{background:rgba(4,4,10,.86);backdrop-filter:blur(3px)}
+
+/* tinted fills that came from retired hues */
+.syl-subj-card.sel{background:var(--panel3);border-color:var(--border2)}
+.syl-dropzone:hover,.syl-dropzone.drag{border-color:var(--accent);background:rgba(255,211,78,.05)}
+.home-extra-btn.syl-cta{color:var(--dim);border-color:var(--border)}
+.home-extra-btn.syl-cta:hover{background:var(--panel3);color:var(--text);border-color:var(--border2)}
+.home-practice-resume{background:var(--panel)}
+.home-practice-resume:hover{background:var(--panel2);border-color:var(--border2)}
+.hpr-icon,.hpr-chev{color:var(--dim2)}
+.hpr-title{color:var(--text)}
+.syl-progress-fill{background:var(--accent)}
+.syl-seg.done{background:var(--dim2)}
+.syl-seg.cur{background:var(--accent)}
+.syl-scan-line{background:var(--accent);box-shadow:0 0 12px 2px rgba(255,211,78,.5)}
+.syl-scan-caption{color:var(--dim)}
+.syl-scan-step.done{color:var(--dim)}
+.syl-scan-step.done .syl-mk{background:var(--good);border-color:var(--good);color:#062018}
+.syl-scan-step.active .syl-mk{border-color:var(--accent)}
+.syl-topic-row.on .syl-chk{background:var(--good);border-color:var(--good)}
+.syl-summary-strip b,.syl-progress-meta b{color:var(--accent)}
+.syl-practice-num{color:var(--accent)}
+.syl-subj-chip{color:var(--dim);border-color:var(--border)}
+.syl-qtag{color:var(--dim2);border-color:var(--border)}
+.pick-world-banner{color:var(--dim);background:var(--panel)}
+
+/* guardian + resistance chips: neutral, the glyph carries the meaning */
+.guardian-chip{
+  color:var(--dim);border-color:var(--border2);background:var(--panel3);
+  animation:none;font-size:11px;
+}
+.pp-res{background:var(--panel3);border-color:var(--border)}
+.pp-res b{color:var(--dim2);font-size:9.5px;letter-spacing:.08em}
+.pp-res.imm{border-color:rgba(255,92,114,.5)}
+.pp-res.imm b{color:var(--bad);font-size:9.5px}
+
+/* status effects lose their four hues. A 3px left bar says only whether the
+   effect helps or hurts — the glyph already names which effect it is. */
+.effect-row{
+  border-color:var(--border);border-left:3px solid var(--bad);
+  border-radius:var(--r1);background:var(--panel3);
+}
+.eff-bg-shield,.effect-row.eff-bg-shield{border-left-color:var(--good)}
+.eff-bg-poison,.eff-bg-burn,.eff-bg-paralyze{
+  background:var(--panel3);animation:none;
+}
+.eff-bg-shield{background:var(--panel3)}
+.eff-chip-fire,.eff-chip-spark{display:none}
+.effect-bar-wrap{background:var(--bg);border-color:var(--border)}
+
+/* the auto-revive slot goes neutral until it is actually armed */
+.revive-slot{background:var(--panel2);border-color:var(--border)}
+.revive-slot .rs-name{color:var(--dim2)}
+.revive-slot .rs-count{color:var(--dim2);background:var(--panel3);border-color:var(--border)}
+.revive-slot:not(.empty){border-color:var(--good)}
+.revive-slot:not(.empty) .rs-name{color:var(--good)}
+.revive-slot:not(.empty) .rs-count{color:var(--good);border-color:var(--good)}
+.revive-slot:not(.empty) .rs-desc{color:var(--dim);opacity:1}
+.revive-slot.empty{opacity:.6;filter:none}
+
+/* world labels 1–11: one neutral chip. Identity comes from the name. */
+.map-slide .world-label,
+.wl-1,.wl-2,.wl-3,.wl-4,.wl-5,.wl-soon,
+.world-label.wl-6,.world-label.wl-7,.world-label.wl-8,
+.world-label.wl-9,.world-label.wl-10{
+  color:var(--text);
+  border-color:var(--border);
+  background:var(--panel);
+  border-radius:var(--r2);
+  border-width:1px;
+  font-size:11px;
+  letter-spacing:.14em;
+}
+/* the ending keeps its glow — it is the one moment that has earned it */
+.world-label.wl-11,.world-label.wl-end{
+  color:var(--accent);border-color:rgba(255,211,78,.5);
+  text-shadow:0 0 16px rgba(255,211,78,.4);
+}
+
+
+/* ═══ §5 · BUTTONS ════════════════════════════════════════════════════════
+   One filled button per screen. Everything else is an outline that stays
+   neutral until hovered. Destructive actions reveal red on hover rather
+   than shouting it at rest.
+   ════════════════════════════════════════════════════════════════════════ */
+.pbtn{
+  font-family:var(--px);
+  font-size:10px;
+  letter-spacing:.05em;
+  background:var(--panel2);
+  border:1px solid var(--border2);
+  border-radius:var(--r2);
+  color:var(--dim);
+  padding:0 18px;
+  min-height:46px;
+  box-shadow:none;
+  transition:border-color .14s,color .14s,background .14s,transform .1s;
+}
+.pbtn:hover{
+  transform:translateY(-1px);
+  filter:none;
+  border-color:var(--dim2);
+  color:var(--text);
+  background:var(--panel3);
+  box-shadow:none;
+}
+.pbtn:active{transform:translateY(1px)}
+
+/* .g is the forward action — the one filled button */
+.pbtn.g{
+  background:var(--accent);border-color:var(--accent);color:#241C00;
+  box-shadow:0 0 28px rgba(255,211,78,.20);
+}
+.pbtn.g:hover{background:var(--accent);border-color:var(--accent);color:#241C00;filter:brightness(1.08)}
+
+/* .y is the strong outline */
+.pbtn.y{color:var(--accent);border-color:var(--accent);background:var(--panel2);box-shadow:none}
+.pbtn.y:hover{background:rgba(255,211,78,.10);color:var(--accent);border-color:var(--accent)}
+
+/* .b is plain neutral */
+.pbtn.b{color:var(--dim);border-color:var(--border2);box-shadow:none}
+.pbtn.b:hover{color:var(--text);border-color:var(--dim2)}
+
+/* .r is neutral at rest, red on approach */
+.pbtn.r{color:var(--dim);border-color:var(--border2);box-shadow:none}
+.pbtn.r:hover{color:var(--bad);border-color:var(--bad);background:rgba(255,92,114,.08)}
+
+/* small variant: Space Mono so it can shrink typographically while the
+   tap target stays well over the 44px minimum (was ~26px) */
+.pbtn.sm{
+  font-family:var(--vt);font-weight:700;font-size:11px;
+  letter-spacing:.12em;text-transform:uppercase;
+  padding:0 14px;min-height:40px;
+}
+.pbtn:disabled{opacity:.35}
+
+/* the map topbar sizes its own controls — keep them aligned but tappable */
+.map-topbar #timer-toggle-btn,
+.map-topbar .pbtn.sm,
+#attr-bar .ab-toggle{
+  height:34px;min-height:34px;font-size:10.5px;
+  font-family:var(--vt);font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  border-radius:var(--r1);
+}
+#attr-bar .ab-toggle{border-color:var(--border2);color:var(--dim);background:var(--panel2)}
+#attr-bar .ab-toggle:hover{filter:none;border-color:var(--accent);color:var(--accent)}
+#attr-bar .ab-body{border-color:var(--border);border-width:1px;border-radius:var(--r2);
+  box-shadow:0 20px 50px rgba(0,0,0,.7)}
+@media (max-width:640px){
+  .map-topbar #timer-toggle-btn,
+  .map-topbar .pbtn.sm,
+  #attr-bar .ab-toggle{height:32px;min-height:32px;font-size:10px;padding:0 10px}
+}
+
+.title-menu-btn{
+  background:var(--panel2);border:1px solid var(--border2);border-radius:var(--r2);
+  color:var(--dim);width:42px;height:42px;
+}
+.title-menu-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+#name-in{
+  font-family:var(--px);font-size:11px;background:var(--panel2);
+  border:1px solid var(--border2);color:var(--text);border-radius:var(--r2);
+  letter-spacing:.24em;
+}
+#name-in:focus{border-color:var(--accent);color:var(--accent)}
+.practice-select,.syl-textarea,.syl-topic-input{
+  font-family:var(--vt);font-size:13px;background:var(--panel2);
+  border:1px solid var(--border);color:var(--text);border-radius:var(--r2);
+}
+.practice-select{min-height:44px}
+.practice-select:focus,.syl-textarea:focus,.syl-topic-input:focus{border-color:var(--accent)}
+
+
+/* ═══ §6 · LUCIDE ICONS ═══════════════════════════════════════════════════
+   lucide.dev, minimalist set. One stroke weight across the whole game so the
+   icons read as a family rather than as clip-art at assorted weights.
+   ════════════════════════════════════════════════════════════════════════ */
+[data-lucide],
+svg.lucide,
+.dq-ico{
+  stroke:currentColor;
+  fill:none;
+  stroke-width:1.75;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  display:inline-block;
+  vertical-align:middle;
+  flex-shrink:0;
+}
+
+/* size by role, not per-instance */
+.pbtn i,.pbtn svg{width:14px;height:14px;stroke-width:2;margin-right:5px}
+.pbtn.sm i,.pbtn.sm svg{width:13px;height:13px}
+/* a trailing icon on a forward action sits after the label, not before */
+.pbtn .ico-end,.pbtn svg.ico-end{margin-right:0;margin-left:7px}
+.title-menu-btn i,.title-menu-btn svg{width:19px;height:19px}
+.hq-icon i,.hq-icon svg{width:24px;height:24px;stroke-width:1.6}
+.diff-icon i,.diff-icon svg{width:28px;height:28px;stroke-width:1.5}
+.hpr-icon i,.hpr-icon svg{width:22px;height:22px}
+.hpr-chev{width:16px;height:16px}
+.pug-icon i,.pug-icon svg{width:19px;height:19px}
+.gtb-lbl i,.gtb-lbl svg{width:11px;height:11px;stroke-width:2.2}
+.pu-header i,.pu-header svg{width:13px;height:13px}
+.aw-title i,.aw-title svg{width:15px;height:15px;stroke-width:2.2}
+
+/* icons swapped in from emoji by dino-icons.js */
+.dq-ico{width:1em;height:1em}
+.sicon .dq-ico,.effect-icon .dq-ico{width:16px;height:16px}
+.pu-icon .dq-ico{width:24px;height:24px;stroke-width:1.6}
+.aw-icon .dq-ico,.es-icon .dq-ico,.ach-ic .dq-ico{width:18px;height:18px}
+.rs-icon .dq-ico{width:16px;height:16px}
+.sn-icon .dq-ico{width:20px;height:20px;stroke-width:1.6}
+.syl-dz-icon .dq-ico{width:26px;height:26px;stroke-width:1.4}
+.home-empty-icon .dq-ico{width:28px;height:28px;stroke-width:1.4}
+.card-icon .dq-ico{width:28px;height:28px;stroke-width:1.5}
+.soon-orb .dq-ico{width:28px;height:28px;stroke-width:1.4}
+
+/* icons placed directly in dino.html markup */
+.ach-bar-ic i,.ach-bar-ic svg{width:20px;height:20px;color:var(--accent)}
+.rs-icon i,.rs-icon svg{width:16px;height:16px}
+.syl-dz-icon i,.syl-dz-icon svg{width:28px;height:28px;stroke-width:1.4;color:var(--dim2)}
+.syl-file-ic{display:inline-flex;color:var(--dim2)}
+.syl-file-ic i,.syl-file-ic svg{width:20px;height:20px}
+.syl-err-ic{display:inline-flex;color:var(--bad);flex-shrink:0}
+.syl-err-ic i,.syl-err-ic svg{width:18px;height:18px;stroke-width:2}
+#hint-bar>span:first-child i,#hint-bar>span:first-child svg{
+  width:13px;height:13px;stroke-width:2.2;margin-right:2px;
+}
+
+/* emoji the map deliberately leaves alone still need to sit on the baseline */
+.dq-emoji{font-family:'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif;
+  font-style:normal;line-height:1}
+
+/* icons inherit their parent's colour — they never introduce a hue */
+.sicon,.effect-icon,.pu-icon,.rs-icon,.sn-icon,.aw-icon,
+.es-icon,.ach-ic,.syl-dz-icon,.home-empty-icon,.qc-i{color:inherit}
+
+
+/* ── classes replacing inline font-size in dino.html ─────────────────────
+   Fifteen elements carried a hard-coded px size in the markup, which no
+   stylesheet could reach. They are classes now; the sizes live here. */
+.diff-h{font-family:var(--px);font-size:11px;color:var(--text);letter-spacing:.04em}
+.diff-sub{font-size:12.5px;color:var(--dim);text-align:center;line-height:1.6}
+.sc-row{display:flex;gap:10px;align-items:center;font-size:12px}
+.sc-sub{font-size:11.5px;color:var(--dim2);letter-spacing:.06em}
+.sc-sub b{color:var(--text);font-weight:700;font-variant-numeric:tabular-nums}
+.sc-sub b#sc-combo{color:var(--good)}
+.fx-none{font-size:11.5px;color:var(--dim2);font-style:italic}
+/* CURRENT STAGE reads on ONE line — "CURRENT STAGE: Forest Fringe" — so the
+   box is a strip rather than a two-line block. On a phone that alone gave the
+   question panel back about 20px. */
+.stage-box{
+  background:var(--panel2);border:1px solid var(--border);border-radius:var(--r2);
+  padding:6px 10px;min-width:0;
+  display:flex;align-items:baseline;gap:6px;
+}
+.stage-lbl{
+  font-family:var(--vt);font-weight:700;font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--dim2);flex:0 0 auto;
+}
+.stage-lbl::after{content:':'}
+.stage-box #stage-info{
+  flex:1 1 auto;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-size:12px;color:var(--text);
+}
+.pickpu-sub{font-size:12.5px;color:var(--dim)}
+.pr-lbl{
+  font-family:var(--vt);font-weight:700;font-size:10.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--dim2);
+}
+#practice-icon{font-size:22px;color:var(--dim);display:inline-flex;align-items:center}
+#practice-icon .dq-ico{width:24px;height:24px}
+#practice-name{font-family:var(--px);font-size:10px;color:var(--text)}
+#practice-passive{font-size:12px;color:var(--dim);margin-top:4px}
+
+
+/* ═══ §7 · BATTLE ═════════════════════════════════════════════════════════ */
+.g-topbar{background:var(--panel);border-bottom:1px solid var(--border)}
+.gtb{background:var(--panel2);border:1px solid var(--border);border-radius:var(--r2)}
+.gtb.pp-card:hover{border-color:var(--border2)}
+.gtb.pp-card .gtb-lbl::after{content:''}
+.gtb-quit{border-radius:var(--r2)}
+#g-boss-name{font-size:13px;color:var(--text)}
+#g-stage{color:var(--dim)}
+#sc-score{color:var(--accent)}
+#sc-streak{color:var(--text)}
+#sc-combo{color:var(--good)}
+
+/* arena */
+.battle{
+  background:linear-gradient(180deg,#0F0F20,#08080F);
+  border:1px solid var(--border);border-radius:var(--r2);
+}
+.battle::before{
+  background:repeating-linear-gradient(90deg,var(--border) 0 6px,transparent 6px 12px);
+}
+.hp-bar{background:#08080F;border:1px solid var(--border2);border-radius:2px}
+.hp-bar.low .hp-fill{animation:none}
+.hp-ghost{background:rgba(255,255,255,.42)}
+.vs{color:var(--border2)}
+.arena-banner{
+  background:rgba(7,7,14,.9);border:1px solid var(--border2);color:var(--text);
+  border-radius:var(--r1);font-size:10px;letter-spacing:.16em;
+}
+.arena-banner.boss{border-color:var(--bad);color:var(--bad)}
+.battle.boss-mood::after{
+  background:radial-gradient(ellipse at 74% 60%,rgba(255,92,114,.16),transparent 55%);
+}
+.freeze-overlay{background:rgba(165,168,204,.14);border:1px solid var(--border2)}
+.paralyze-overlay{background:rgba(165,168,204,.14);border:1px solid var(--border2);animation:none}
+.shield-glow{border:2px solid var(--good);box-shadow:0 0 14px rgba(91,255,158,.4)}
+.heal-aura{border:2px solid var(--good)}
+.heal-float{color:var(--good)}
+
+/* turn + message */
+.turn-indicator{
+  font-size:11px;letter-spacing:.14em;border-radius:var(--r2);
+  border:1px solid;background:var(--panel2);padding:9px 14px;
+}
+.turn-indicator.player-turn{color:var(--good);border-color:var(--good);background:rgba(91,255,158,.08)}
+.turn-indicator.boss-turn{color:var(--bad);border-color:var(--bad);background:rgba(255,92,114,.08)}
+.msg-bar{background:var(--panel2);border:1px solid var(--border);border-radius:var(--r2);color:var(--dim)}
+.g-status>div:last-child{background:var(--panel2);border:1px solid var(--border);border-radius:var(--r2)}
+#stage-info{font-size:11.5px;color:var(--dim)}
+
+/* ── question panel — the approved look ── */
+.q-panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2)}
+.q-tag{
+  font-size:10.5px;border-radius:20px;padding:3px 10px;border:1px solid;
+}
+.q-diff-easy{color:var(--good);border-color:var(--good)}
+.q-diff-medium{color:var(--accent);border-color:var(--accent)}
+.q-diff-hard{color:var(--bad);border-color:var(--bad)}
+.q-type{font-size:11px;color:var(--dim2)}
+.q-timer{font-family:var(--px);font-size:12px;color:var(--accent)}
+.q-timer.urgent{color:var(--bad)}
+.q-text{color:var(--text)}
+
+.choice{
+  background:var(--panel2);border:1px solid var(--border);border-radius:var(--r2);
+  color:var(--text);transition:border-color .13s,color .13s,background .13s;
+}
+.choice:hover:not(:disabled){
+  border-color:var(--accent);color:var(--accent);
+  background:rgba(255,211,78,.07);transform:none;
+}
+.choice:hover:not(:disabled) .c-letter{color:var(--accent)}
+.choice.correct{border-color:var(--good);background:rgba(91,255,158,.10);color:var(--good)}
+.choice.correct .c-letter{color:var(--good)}
+.choice.wrong{border-color:var(--bad);background:rgba(255,92,114,.10);color:var(--bad)}
+.choice.wrong .c-letter{color:var(--bad)}
+.choice.petrified{
+  background:var(--panel3);border-color:var(--border2);color:var(--dim2);
+}
+.choice.eliminated{opacity:.15}
+
+#hint-bar{
+  background:transparent;border-top:1px solid var(--border);
+  border-radius:0;
+}
+#hint-bar>span:first-child{
+  font-family:var(--vt);font-weight:700;font-size:10.5px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--accent);
+}
+
+/* damage numbers */
+.fdmg{text-shadow:0 2px 0 rgba(0,0,0,.9)}
+
+
+/* ── PHONE BATTLE · vertical budget ──────────────────────────────────────
+   Two things were eating the screen and squeezing the tip out.
+
+   1. The docked inventory declared max-height:96px but its content — the
+      revive slot on its own line, then a row of 64px buttons — needed ~103px,
+      so it overflowed its own box and hung 8px below the viewport. Laying the
+      revive slot BESIDE the powerup scroller instead of above it makes the
+      whole dock one row.
+   2. .g-status stacked three full-width rows (turn, message, stage) for
+      107-125px. Turn and stage share a row now; the message keeps its own.
+
+   --inv-h is the single source for both the dock's height and the padding
+   that reserves room for it, so the two can never drift apart again. */
+@media (max-width:640px){
+  :root{--inv-h:96px}
+
+  #s-game{padding-bottom:var(--inv-h)}
+  .g-inv{
+    max-height:var(--inv-h);
+    padding:0;
+    border-top:1px solid var(--border);
+    background:var(--panel);
+  }
+  /* Two parts, as on desktop. AUTO-REVIVE is an equipped slot that fires by
+     itself — it is NOT one of the tappable powerups, so it keeps its own thin
+     status line above them rather than sitting in the same row looking like
+     something you can spend. Both parts are compact enough to fit the dock. */
+  .pu-panel{
+    flex-direction:column;align-items:stretch;gap:3px;
+    padding:4px 7px;height:var(--inv-h);
+  }
+  .revive-slot{
+    width:100%;flex:0 0 auto;
+    padding:2px 8px;gap:7px;border-radius:var(--r1);
+    border-style:dashed;cursor:default;
+  }
+  .revive-slot:not(.empty){border-style:solid}
+  .revive-slot .rs-icon{font-size:13px}
+  .revive-slot .rs-icon i,.revive-slot .rs-icon svg{width:14px;height:14px}
+  .revive-slot .rs-info{flex-direction:row;align-items:baseline;gap:6px;min-width:0}
+  .revive-slot .rs-name{font-size:9.5px;letter-spacing:.12em;flex:0 0 auto}
+  .revive-slot .rs-desc{font-size:10.5px;flex:1 1 auto;min-width:0}
+  .revive-slot .rs-count{font-size:8.5px;padding:1px 7px;line-height:16px;margin-left:auto}
+
+  /* The buttons were flex:0 0 60px, so a three-power-up loadout left the rest
+     of the row empty. They grow to share the width instead, and only start
+     scrolling once there are too many to fit at 52px each. */
+  /* `justify-content:center` here was silently unreachable UI. On a phone
+     dino.css makes this strip `display:flex;flex-wrap:nowrap;overflow-x:auto`,
+     and centring an OVERFLOWING scroll container pushes the start of the
+     content off the left side — where scrollLeft cannot go below 0, so it can
+     never be scrolled back. With a full loadout the first power-up opened
+     26px off the edge at 390px and 61px at 320px, and no scroll position
+     brought it back. `safe` centres only while everything fits and falls back
+     to flex-start the moment it does not; a browser that does not understand
+     it drops the declaration and gets flex-start anyway. */
+  .pu-items{flex:1 1 auto;min-width:0;align-items:stretch;justify-content:safe center}
+  /* grow to fill, but a 2-item loadout should not produce 184px buttons —
+     past the cap the row centres instead, which reads as deliberate */
+  /* no max-width: with only two powerups a cap left a dead 44px at the end
+     of the row. They share whatever the row has. */
+  .pu-btn{flex:1 0 52px;min-width:52px;padding:5px 3px;gap:3px;justify-content:center}
+  .pu-icon{font-size:19px}
+  .pu-icon .dq-ico,.pu-icon i,.pu-icon svg{width:21px;height:21px}
+  .pu-name{font-size:8.5px;letter-spacing:.04em;line-height:1.25}
+  .pu-count{font-size:7.5px;top:1px;right:4px}
+
+  /* Three stacked rows: YOUR TURN on top, the message under it, the stage
+     line last. The turn chip keeps its small type but spans the row, so it
+     reads as a banner instead of a small pill with dead space beside it. */
+  .g-status{flex-wrap:wrap;gap:5px;align-items:stretch}
+  .turn-indicator{
+    flex:1 1 100%;order:0;font-size:10px;padding:6px 11px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .msg-bar{flex:1 1 100%;order:1;min-width:0;display:flex;align-items:center;justify-content:center}
+  .stage-box{flex:1 1 100%;order:2}
+  .stage-lbl{font-size:9px;letter-spacing:.1em}
+  .stage-box #stage-info{font-size:11.5px}
+
+  /* The arena must NOT resize between questions. flex:1 1 auto made its
+     height depend on how tall the question panel happened to be, so a long
+     question or a 6-answer round visibly shrank the battle and a short one
+     grew it back — it breathed in and out every turn. A vh height is fixed
+     for a given device and never reacts to content. */
+  .g-main{min-height:0}
+  .battle{flex:0 0 auto;height:24vh;min-height:150px;max-height:300px}
+  .q-panel{flex:0 0 auto;min-height:0}
+  /* Answers keep their natural height. Stretching them to fill pushed the
+     whole panel past the viewport and put the TIP under the dock — the fixed
+     arena above already takes the slack, so there is nothing left to absorb. */
+  .choices{flex:0 1 auto;align-content:start;grid-auto-rows:minmax(52px,auto)}
+
+  /* the tip is the thing all of this was protecting — give it a floor */
+  #hint-bar{min-height:38px;padding:7px 10px;flex:0 0 auto}
+  #hint-text{font-size:12px;line-height:1.35}
+}
+@media (max-width:400px){
+  :root{--inv-h:90px}
+  .revive-slot .rs-desc{font-size:9.5px}   /* ellipsises rather than hiding */
+  .pu-btn{flex:1 0 48px;min-width:48px}
+  .pu-icon{font-size:18px}
+  .pu-icon .dq-ico,.pu-icon i,.pu-icon svg{width:19px;height:19px}
+  .pu-name{font-size:8px}
+  .turn-indicator{font-size:9.5px;padding:5px 9px}
+}
+
+/* ═══ §8 · INVENTORY ══════════════════════════════════════════════════════ */
+.pu-panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2)}
+.pu-header{color:var(--dim2)}
+.pu-btn{
+  background:var(--panel2);border:1px solid var(--border);border-radius:var(--r2);
+}
+.pu-btn:hover:not(:disabled){transform:none;border-color:var(--accent);background:rgba(255,211,78,.07)}
+.pu-btn:hover:not(:disabled) .pu-name{color:var(--accent)}
+.pu-btn.pu-sealed{filter:grayscale(1);opacity:.45}
+.pu-icon{color:var(--dim)}
+.pu-btn:hover:not(:disabled) .pu-icon{color:var(--accent)}
+
+/* ═══ §15 · THE LOADOUT PICKER ════════════════════════════════════════════
+   Rebuilt as slots + pool. The old screen was a flex-wrap of cards whose
+   width followed the length of their own description, so no two were the
+   same size and eight of them stacked into a 1294px scroll on a phone with
+   the confirm button below the fold. Three regions now:
+
+     .pk-shell  scrolls          → header · rail · pool
+     .pk-rail   what you build   → kept slots (locked) + picked + empty
+     .pu-pick-cards              → a real grid, 2 / 3 / 4 columns
+     .pick-confirm-row  docked   → always on screen
+
+   Colour follows the single-point rule: every card is the same hairline at
+   rest and gold is reserved for what you have actually taken. The card
+   borders used to come from PU[t].border as an inline style — nine hues and
+   unreachable by any media query. Both problems, one fix.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ── the shell: pool scrolls, bar stays ─────────────────────────────────── */
+#s-pickpu{
+  flex-direction:column;align-items:stretch;justify-content:flex-start;
+  gap:0;padding:0;
+  height:100vh;height:100dvh;min-height:0;
+  overflow:hidden;
+}
+.pk-shell{
+  flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  display:flex;flex-direction:column;align-items:center;gap:18px;
+  width:100%;padding:clamp(20px,4vh,40px) 16px 18px;
+}
+/* auto margins on two empty pseudos centre the column when it fits and
+   collapse when it doesn't — `justify-content:center` would clip the top
+   of an overflowing scroller instead */
+.pk-shell::before{content:'';margin-top:auto}
+.pk-shell::after{content:'';margin-bottom:auto}
+.pk-shell>*{width:100%;max-width:900px}
+.pk-shell::-webkit-scrollbar{width:7px}
+.pk-shell::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+
+/* ── header ─────────────────────────────────────────────────────────────── */
+.pk-head{display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center}
+.pk-eyebrow{
+  font-family:var(--vt);font-weight:700;font-size:10px;letter-spacing:.22em;
+  text-transform:uppercase;color:var(--accent);
+  display:flex;align-items:center;gap:9px;
+}
+.pk-eyebrow::before,.pk-eyebrow::after{content:'';width:18px;height:1px;background:var(--accent);opacity:.5}
+.pu-pick-title{color:var(--text)}
+.pickpu-sub{font-size:12.5px;color:var(--dim);max-width:46ch}
+
+/* ── the rail: the loadout you are assembling ───────────────────────────── */
+.pk-rail{
+  border:1px solid var(--border);border-radius:var(--r3);
+  background:var(--panel);padding:13px 15px 15px;
+  display:flex;flex-direction:column;gap:11px;
+  transition:border-color .18s;
+}
+.pk-rail.pk-full{border-color:var(--accent)}
+.pk-rail[hidden]{display:none}
+.pk-rail-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.pk-rail-lbl{
+  font-family:var(--vt);font-weight:700;font-size:10px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--dim2);
+}
+.pk-rail-count{
+  font-family:var(--px);font-size:11px;color:var(--dim);
+  font-variant-numeric:tabular-nums;
+}
+.pk-rail.pk-full .pk-rail-count{color:var(--accent)}
+
+.pk-slots{display:flex;flex-wrap:wrap;gap:8px}
+.pk-slot{
+  flex:0 1 auto;min-width:0;
+  display:flex;align-items:center;gap:7px;
+  padding:7px 11px;border-radius:var(--r2);
+  border:1px solid var(--border2);background:var(--panel2);
+  /* a slot is a <div> when it is locked and a <button> when it can be taken
+     back out — reset the button so the two render identically */
+  appearance:none;-webkit-appearance:none;font:inherit;
+  color:var(--dim);text-align:left;
+  transition:border-color .15s,color .15s,background .15s;
+}
+.pk-slot-ico{display:inline-flex;flex:0 0 auto}
+.pk-slot-ico i,.pk-slot-ico svg{width:15px;height:15px;stroke-width:2}
+.pk-slot-name{
+  font-family:var(--vt);font-weight:700;font-size:10.5px;letter-spacing:.1em;
+  text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+/* carried in from earlier worlds — cannot be removed here */
+.pk-slot.pk-kept{color:var(--dim2);border-style:dashed;cursor:default}
+.pk-slot-plus{
+  font-family:var(--px);font-size:8.5px;color:var(--good);
+  padding-left:2px;flex:0 0 auto;
+}
+/* taken this screen — tap to put back */
+.pk-slot.pk-new{
+  color:var(--accent);border-color:var(--accent);
+  background:rgba(255,211,78,.10);cursor:pointer;
+}
+.pk-slot.pk-new:hover{background:rgba(255,211,78,.18)}
+.pk-slot-x{
+  display:inline-flex;align-items:center;justify-content:center;
+  opacity:.65;flex:0 0 auto;margin-left:1px;
+  font-size:14px;line-height:1;
+}
+.pk-slot.pk-new:hover .pk-slot-x{opacity:1}
+/* still to fill — the plus is drawn in CSS so an empty slot still reads as
+   a slot if lucide has not loaded */
+.pk-slot.pk-empty{
+  border-style:dashed;border-color:var(--border);background:transparent;
+  color:var(--dim2);padding:7px 11px;min-width:76px;justify-content:center;
+}
+.pk-slot.pk-empty::before{
+  content:'+';font-family:var(--vt);font-weight:700;font-size:13px;
+  line-height:1;color:var(--dim2);opacity:.7;
+}
+.pk-slot.pk-empty::after{
+  content:'EMPTY';font-family:var(--vt);font-weight:700;font-size:9px;
+  letter-spacing:.16em;color:var(--dim2);opacity:.6;
+}
+.pk-slot.pk-empty .pk-slot-ico{display:none}
+
+.pk-refill{
+  display:flex;align-items:flex-start;gap:7px;
+  font-size:11.5px;color:var(--dim2);line-height:1.5;
+  padding-top:10px;border-top:1px solid var(--border);
+}
+/* the text is one flex child, so the <b>+4</b> inside stays inline instead of
+   becoming a flex item and splitting the sentence around itself */
+.pk-refill>span{flex:1 1 auto;min-width:0}
+.pk-refill[hidden]{display:none}
+.pk-refill b{color:var(--good)}
+.pk-refill i,.pk-refill svg{width:13px;height:13px;flex:0 0 auto;color:var(--good);margin-top:2px}
+
+/* ── the pool ───────────────────────────────────────────────────────────── */
+.pk-pool{display:flex;flex-direction:column;gap:10px}
+.pk-pool-head{
+  font-family:var(--vt);font-weight:700;font-size:10px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--dim2);
+  /* centred with the cards: a short row no longer fills the band, so a
+     left-aligned label floated away from what it labels */
+  text-align:center;
+}
+/* a real grid — equal columns, so one long description can no longer make
+   its own card wider than its neighbours */
+.pu-pick-cards{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;
+  justify-content:stretch;align-items:stretch;
+}
+@media (min-width:561px){.pu-pick-cards{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}}
+@media (min-width:861px){.pu-pick-cards{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}}
+/* an odd count leaves one card alone in the last row — let it take the width
+   instead of sitting in a half-empty row. `:last-child:nth-child(odd)` only
+   matches when the total is odd, which is exactly the case that looks wrong
+   in two columns (a mid-battle reward is always three). */
+@media (max-width:560px){
+  .pu-pick-cards>.pu-pick-card:last-child:nth-child(odd){grid-column:span 2}
+}
+
+.pu-pick-card{
+  position:relative;min-width:0;width:auto;
+  appearance:none;-webkit-appearance:none;font:inherit;
+  background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);
+  padding:15px 12px 13px;cursor:pointer;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  filter:none;opacity:1;transform:none;
+  transition:border-color .15s,background .15s,transform .12s,box-shadow .15s;
+}
+.pu-pick-card:hover{
+  filter:none;opacity:1;transform:translateY(-2px);
+  border-color:var(--border2);background:var(--panel2);box-shadow:none;
+}
+.pu-pick-card:active{transform:translateY(0)}
+.pu-pick-card .card-icon{display:flex;align-items:center;justify-content:center;font-size:0;color:var(--dim)}
+.pu-pick-card .card-icon i,.pu-pick-card .card-icon svg{width:26px;height:26px;stroke-width:1.6}
+.pu-pick-card .card-name{
+  font-family:var(--px);font-size:9px;line-height:1.5;color:var(--text);
+  letter-spacing:.04em;
+}
+.pu-pick-card .card-desc{
+  font-size:11.5px;line-height:1.5;color:var(--dim);
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;
+  overflow:hidden;
+}
+.pu-pick-card .card-rarity{
+  margin-top:auto;padding:3px 8px;border-radius:999px;
+  border:1px solid var(--border2);color:var(--dim2);
+  font-family:var(--vt);font-weight:700;font-size:9px;letter-spacing:.13em;
+  white-space:nowrap;
+}
+
+/* picked — the one place gold appears */
+.pu-pick-card.picked{
+  filter:none;opacity:1;transform:none;pointer-events:auto;cursor:pointer;
+  border-color:var(--accent);background:rgba(255,211,78,.08);
+  box-shadow:0 0 0 1px rgba(255,211,78,.28) inset;
+}
+.pu-pick-card.picked:hover{transform:translateY(-2px);border-color:var(--accent);background:rgba(255,211,78,.14)}
+.pu-pick-card.picked .card-name,
+.pu-pick-card.picked .card-icon{color:var(--accent)}
+.pu-pick-card.picked .card-rarity{border-color:var(--accent);color:var(--accent)}
+/* the old ::after read "TAP TO UNDO" under every picked card and pushed the
+   grid around; the tick is inside the card now */
+.pu-pick-card.picked::after{content:none}
+.pk-tick{
+  position:absolute;top:7px;right:7px;
+  width:17px;height:17px;border-radius:50%;
+  display:none;align-items:center;justify-content:center;
+  background:var(--accent);color:#241C00;
+}
+.pk-tick{font-size:11px;font-weight:700;line-height:1}
+.pu-pick-card.picked .pk-tick{display:flex}
+
+/* mid-battle reward: a powerup already in the loadout just tops up */
+.pu-pick-card.pk-owned .card-rarity{border-color:var(--dim2);color:var(--dim)}
+
+/* ── the docked bar ─────────────────────────────────────────────────────── */
+.pick-confirm-row{
+  flex:0 0 auto;
+  display:flex;flex-direction:column;align-items:center;gap:7px;
+  width:100%;max-width:none;margin-top:0;
+  padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));
+  border-top:1px solid var(--border);background:var(--panel);
+}
+.pick-confirm-row[hidden]{display:none}
+.pick-confirm-row .pbtn{width:100%;max-width:420px}
+.pick-hint{font-size:11.5px;color:var(--dim2);text-align:center;line-height:1.5}
+
+/* ── narrow ─────────────────────────────────────────────────────────────── */
+@media (max-width:640px){
+  .pk-shell{gap:14px;padding:18px 12px 14px}
+  .pk-rail{padding:11px 12px 13px;border-radius:var(--r2)}
+  .pk-slots{gap:6px}
+  .pk-slot{padding:6px 9px;gap:6px}
+  .pk-slot-name{font-size:9.5px}
+  .pu-pick-card{padding:12px 9px 11px;gap:5px}
+  .pu-pick-card .card-icon i,.pu-pick-card .card-icon svg{width:22px;height:22px}
+  .pu-pick-card .card-name{font-size:8px}
+  .pu-pick-card .card-desc{font-size:11px;-webkit-line-clamp:3}
+  .pick-confirm-row{padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px))}
+}
+@media (max-width:380px){
+  .pk-eyebrow::before,.pk-eyebrow::after{display:none}
+  .pu-pick-card{padding:10px 7px 9px}
+  .pu-pick-card .card-name{font-size:7.5px}
+  .pu-pick-card .card-desc{font-size:10.5px;-webkit-line-clamp:4}
+  .pu-pick-card .card-rarity{font-size:8px;padding:2px 6px;letter-spacing:.09em}
+  .pk-slot-name{font-size:9px}
+}
+/* short screens: let the whole thing scroll rather than crushing the rail */
+@media (max-height:560px){
+  .pk-shell{padding-top:12px;gap:11px}
+  .pk-head{gap:4px}
+  .pickpu-sub{display:none}
+}
+
+/* the world-2 spend budget + page meter */
+#w2-budget,#w2-pages{
+  border:1px solid var(--border);border-radius:var(--r2);background:var(--panel2);
+}
+#w2-budget{font-size:11px;letter-spacing:.1em}
+#w2-budget .w2-b-lbl{color:var(--dim);font-weight:700}
+#w2-pages{background:var(--panel2)}
+#w2-pages .w2-pg-row{font-size:11px;color:var(--dim);opacity:1;letter-spacing:.08em}
+#w2-pages .w2-str-2{color:var(--accent)}
+#w2-pages .w2-str-3{color:var(--bad)}
+/* ── the reactive rail (The Margin Doctrine) ─────────────────────────────
+   Six chips: armed, just-fired, spent. It shares the HUD row with USES and
+   PAGES and wraps rather than widening it, so the phone layout is unchanged. */
+#w2-reactive{
+  display:none;align-items:center;gap:5px;flex-wrap:wrap;
+  margin:0 10px 6px;padding:5px 10px;
+  border:1px solid var(--border);border-radius:var(--r2);
+  background:var(--panel2);
+}
+.w2-rc{
+  font-family:var(--vt);font-weight:700;font-size:9.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--dim2);
+  border:1px solid var(--border2);border-radius:20px;padding:2px 8px;
+  white-space:nowrap;transition:color .2s,border-color .2s,background .2s;
+}
+.w2-rc.fired{
+  color:var(--accent);border-color:var(--accent);background:rgba(255,211,78,.12);
+}
+.w2-rc.spent{opacity:.38;text-decoration:line-through}
+#hint-bar #w2-reactive{margin:0;flex:1 1 auto;min-width:0}
+@media (max-width:640px){
+  #w2-reactive{margin-left:6px;margin-right:6px;padding:4px 8px;gap:4px}
+  .w2-rc{font-size:9px;padding:2px 6px;letter-spacing:.06em}
+}
+
+.w2-pip{background:var(--dim)}
+.w2-pip-out{border-color:var(--border2)}
+.w2-serif{background:var(--border2)}
+.w2-serif.on{background:var(--text);box-shadow:0 0 8px rgba(238,239,251,.5)}
+#w2-toast{
+  font-family:var(--vt);font-weight:700;font-size:11.5px;letter-spacing:.06em;
+  background:rgba(7,7,14,.96);border:1px solid var(--border2);border-top:none;
+}
+
+
+/* ═══ §9 · TITLE + HOME ═══════════════════════════════════════════════════ */
+.title-note{background:var(--panel);border:1px solid var(--good);color:var(--good)}
+.tf-item{background:var(--panel2);border:1px solid var(--border);border-radius:var(--r1)}
+.tf-item b{font-size:14px;color:var(--text)}
+
+.home-topbar,.map-topbar,.syl-topbar{
+  background:var(--panel);border-bottom:1px solid var(--border);
+}
+/* HOME + SYLLABUS nav: the title sits dead centre regardless of how wide the
+   flanking buttons are. space-between alone drifted it whenever BACK and the
+   menu button were different widths. */
+.home-topbar,.syl-topbar{position:relative;min-height:56px;gap:8px}
+.home-title-txt,.syl-title-txt{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  margin:0;white-space:nowrap;pointer-events:none;z-index:1;text-align:center;
+}
+.home-topbar .title-menu-btn.static{margin-left:auto}
+.syl-topbar .syl-subj-chip{margin-left:auto}
+@media (max-width:420px){
+  .home-topbar,.syl-topbar{min-height:50px}
+  .home-title-txt{font-size:10px}
+  .syl-title-txt{font-size:10px}
+}
+.home-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2)}
+.streak-card{
+  border-color:rgba(255,211,78,.38);
+  background:var(--panel);
+}
+.home-streak-num{color:var(--accent);text-shadow:none;font-size:32px}
+.home-streak-txt span{color:var(--text)}
+.hsp{background:var(--panel3);border:1px solid var(--border)}
+.hsp.done{background:var(--dim2);border-color:var(--dim2)}
+.hsp.today{background:var(--accent);border-color:var(--accent);animation:none}
+
+.home-stat-item{background:var(--panel2);border:1px solid var(--border);border-radius:var(--r1)}
+.home-stat-item b{font-size:12px;color:var(--text)}
+.home-stat-item.practice{border-color:var(--border)}
+.home-stat-item.practice b{color:var(--text)}
+.home-stat-divider{border-top:1px solid var(--border);color:var(--dim2)}
+
+/* six equally-loud tiles gave no read on where to click. Continue is the
+   only one carrying the accent; the rest are neutral until hovered. */
+.home-quick-card{
+  background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);
+  min-height:78px;justify-content:center;
+}
+.home-quick-card:hover{border-color:var(--accent);background:rgba(255,211,78,.06);transform:none}
+.home-quick-card:hover .hq-label,.home-quick-card:hover .hq-icon{color:var(--accent)}
+.home-quick-card .hq-icon{color:var(--dim2)}
+.home-quick-card:first-child{border-color:rgba(255,211,78,.4);background:rgba(255,211,78,.07)}
+.home-quick-card:first-child .hq-label,
+.home-quick-card:first-child .hq-icon{color:var(--accent)}
+
+.ach-bar{background:var(--panel2);border:1px solid var(--border);border-radius:var(--r2)}
+.ach-bar:hover{background:var(--panel3);border-color:var(--border2);transform:none}
+.ach-bar-title{color:var(--text)}
+.ach-bar-count{font-family:var(--px);font-size:10px;color:var(--accent)}
+.ach-bar-track{background:var(--bg);border:1px solid var(--border)}
+.ach-bar-fill{background:var(--accent)}
+.ach-item{background:var(--panel2);border:1px solid var(--border);border-radius:var(--r2);opacity:.45}
+.ach-item.on{opacity:1;border-color:rgba(255,211,78,.4);background:rgba(255,211,78,.06)}
+.ach-item.on .ach-n{color:var(--accent)}
+.ach-mk{color:var(--good)}
+.ach-cat,.pug-cat-label{border-color:var(--border);color:var(--dim2)}
+
+/* ── POWERUP GUIDE ───────────────────────────────────────────────────────
+   Every card used to carry the powerup's own border and text colour, which
+   put 22 different hues on one screen. The card is neutral now; the icon
+   carries the identity and the AUTO tag carries the only accent. */
+.pug-item{
+  background:var(--panel2);border:1px solid var(--border);border-radius:var(--r2);
+  align-items:flex-start;
+}
+.pug-icon{color:var(--dim);width:30px;height:30px;flex-shrink:0}
+.pug-icon i,.pug-icon svg{width:19px;height:19px}
+.pug-name{color:var(--text);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.pug-w,.pug-auto{
+  font-family:var(--vt);font-weight:700;font-size:9px;letter-spacing:.1em;
+  border:1px solid var(--border2);border-radius:20px;padding:1px 6px;color:var(--dim2);
+}
+.pug-auto{border-color:var(--accent);color:var(--accent)}
+.pug-rank{font-family:var(--vt);font-weight:700;font-size:9px;letter-spacing:.1em;
+  border:1px solid currentColor;border-radius:20px;padding:1px 6px;opacity:.9;color:var(--dim2)}
+/* The rank ladder lives here, not inline: the pick grid is deliberately
+   neutral (see POWERUP GUIDE above) and pick2.js enforces no inline styles
+   on a card. The guide is a reading surface, so colour is welcome there. */
+.pug-rank.r-epic{color:var(--purple)} .pug-rank.r-legend{color:var(--accent)}
+.pug-rank.r-mythic{color:var(--pink)} .pug-rank.r-eternal{color:var(--cyan)}
+.pug-desc{color:var(--dim)}
+.pug-lore{color:var(--dim2);border-left:2px solid var(--border2);padding-left:9px}
+
+/* ── LEADERBOARD ─────────────────────────────────────────────────────── */
+.lb-rank{display:flex;align-items:center;justify-content:center;color:var(--dim2)}
+.lb-rank i,.lb-rank svg{width:18px;height:18px}
+.lb-card.r1 .lb-rank{color:var(--accent)}
+.lb-card.r2 .lb-rank,.lb-card.r3 .lb-rank{color:var(--dim)}
+.lb-world{
+  font-family:var(--vt);font-weight:700;font-size:9px;letter-spacing:.1em;
+  border:1px solid var(--border2);border-radius:20px;padding:1px 7px;color:var(--dim2);
+}
+.lb-sub-row{align-items:center;row-gap:4px}
+.lb-sub-row span{display:inline-flex;align-items:center;gap:4px}
+.lb-sub-row i,.lb-sub-row svg{width:12px;height:12px;color:var(--dim2)}
+.lb-loadout{margin-top:2px}
+.lb-pu{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:22px;background:var(--panel2);border:1px solid var(--border);
+  border-radius:var(--r1);color:var(--dim);padding:0;
+}
+.lb-pu i,.lb-pu svg{width:13px;height:13px}
+.lb-pu-none{font-size:11px;color:var(--dim2);font-style:italic}
+.lb-empty{
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  padding:36px 20px;text-align:center;color:var(--dim2);
+}
+.lb-empty i,.lb-empty svg{width:26px;height:26px;color:var(--border2)}
+.lb-empty span{font-family:var(--vt);font-weight:700;font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--dim)}
+.lb-empty small{font-size:12px;color:var(--dim2);max-width:34ch;line-height:1.5}
+
+/* ── HOW TO PLAY ─────────────────────────────────────────────────────── */
+.intro-count{
+  font-family:var(--vt);font-weight:700;font-size:10px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--dim2);text-align:center;flex:0 0 auto;
+  font-variant-numeric:tabular-nums;
+}
+/* SKIP sits above the modal, out of the nav row, so it never competes with
+   BACK / NEXT for the tap target on a phone */
+.intro-skip{
+  position:absolute;top:10px;right:10px;z-index:2;
+  min-height:32px;padding:0 11px;font-size:10px;
+  color:var(--dim2);border-color:var(--border);background:transparent;
+}
+.intro-skip:hover{color:var(--text);border-color:var(--dim2);background:var(--panel2)}
+#intro-modal .modal-box{position:relative;padding-top:44px}
+#intro-title{color:var(--text)}
+/* dino.css sets `#intro-body *{overflow-wrap:anywhere}`, which breaks text at
+   ANY character rather than between words — that is what was chopping words in
+   half on a phone. break-word only breaks a word that genuinely cannot fit. */
+#intro-body,#intro-body *{
+  overflow-wrap:break-word;
+  word-break:normal;
+  hyphens:none;
+}
+.ig-cmp-table td{word-break:normal;overflow-wrap:break-word}
+
+/* and a step down in size at phone widths, so fewer words need breaking */
+@media (max-width:640px){
+  #intro-title{font-size:clamp(9px,2.4vw,11px);line-height:1.7}
+  #intro-body{font-size:12.5px}
+  .ig-flow-text{font-size:12px;line-height:1.5}
+  .ig-step-list li{font-size:12px;line-height:1.5}
+  .ig-callout{font-size:11.5px;line-height:1.5}
+  .ig-cmp-table{font-size:11.5px}
+  .ig-cmp-name{font-size:9px;letter-spacing:.02em}
+  .ig-cmp-table th{font-size:9px}
+  .ig-cmp-table td{padding:6px 5px}
+  .ig-world-chip .lbl{font-size:8.5px;letter-spacing:.02em}
+  .ig-flow-num{font-size:9px;width:19px;height:19px}
+  .ig-vs-label{font-size:9px}
+}
+@media (max-width:400px){
+  #intro-title{font-size:9px}
+  #intro-body{font-size:12px}
+  .ig-flow-text,.ig-step-list li{font-size:11.5px}
+  .ig-cmp-table{font-size:11px}
+  .ig-cmp-name,.ig-cmp-table th{font-size:8.5px}
+  .ig-world-chip .lbl{font-size:8px}
+}
+
+/* ── achievements: the hidden MARGIN group ──────────────────────────── */
+.ach-ic{display:flex;align-items:center;justify-content:center;color:var(--dim2)}
+.ach-ic i,.ach-ic svg{width:18px;height:18px}
+.ach-item.on .ach-ic{color:var(--accent)}
+.ach-mk{display:flex;align-items:center;color:var(--good)}
+.ach-mk i,.ach-mk svg{width:14px;height:14px}
+
+.ig-dot{
+  width:7px;height:7px;border-radius:50%;background:var(--border2);
+  display:inline-block;transition:.15s;
+}
+.ig-dot.on{background:var(--accent);transform:scale(1.35)}
+.ig-nav{gap:10px}
+.ig-nav .pbtn{min-height:42px;white-space:nowrap;flex:0 0 auto}
+#intro-dots{gap:6px}
+/* Sixteen dots plus BACK and NEXT do not fit a phone row — Press Start 2P is
+   1em per character, so "GOT IT!" alone is ~100px. Below 520 the dots stand
+   down and the "3 / 16" counter carries the position instead. */
+@media (max-width:520px){
+  #intro-dots{display:none}
+  .ig-nav{gap:8px;justify-content:space-between}
+  .ig-nav .pbtn{font-size:9px;padding:0 11px;min-height:40px}
+  .ig-nav .pbtn i,.ig-nav .pbtn svg{width:11px;height:11px;margin-right:3px}
+  .ig-nav .pbtn .ico-end{margin-left:4px;margin-right:0}
+}
+@media (max-width:420px){
+  #intro-modal .modal-box{padding-top:40px}
+  .intro-skip{top:8px;right:8px;min-height:30px;font-size:9.5px;padding:0 9px}
+  .ig-nav .pbtn{font-size:8.5px;padding:0 9px;min-height:38px}
+}
+@media (max-width:340px){
+  .ig-nav .pbtn{font-size:8px;padding:0 7px}
+}
+
+/* ── mystery entries · worlds 6-11 ───────────────────────────────────────
+   Shown, but unreadable until their requirement is met. A mystery you can see
+   the shape of is a better hook than one you cannot see at all. */
+.ach-item.ach-mystery .ach-n,
+.pug-item.pug-mystery .pug-name{color:var(--dim2);letter-spacing:.22em}
+.ach-item.ach-mystery .ach-d,
+.pug-item.pug-mystery .pug-desc{color:var(--dim2);opacity:.65;letter-spacing:.18em}
+.ach-item.ach-mystery,.pug-item.pug-mystery{
+  border-style:dashed;opacity:.75;
+}
+.ach-item.ach-mystery .ach-ic,
+.pug-item.pug-mystery .pug-icon{color:var(--border2)}
+
+.home-empty-cta{background:var(--panel2);border:1px solid var(--border);color:var(--dim)}
+.home-empty-cta b{color:var(--accent)}
+.home-empty-title{color:var(--dim2)}
+
+.diff-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2)}
+.diff-card:hover{transform:translateY(-3px);border-color:var(--border2)}
+.diff-card.easy{border-color:var(--border)}
+.diff-card.medium{border-color:var(--border)}
+.diff-card.hard{border-color:var(--border)}
+.diff-card.easy:hover{border-color:var(--good)}
+.diff-card.medium:hover{border-color:var(--accent)}
+.diff-card.hard:hover{border-color:var(--bad)}
+.diff-name{font-size:10px}
+.diff-card.easy .diff-name{color:var(--good)}
+.diff-card.medium .diff-name{color:var(--accent)}
+.diff-card.hard .diff-name{color:var(--bad)}
+.diff-icon{color:var(--dim2)}
+
+
+/* ═══ §10 · MAP ═══════════════════════════════════════════════════════════
+   Only three things on the map are coloured: what you cleared, where you
+   are, and nothing else. The mini-boss is marked by weight, not by hue.
+   ════════════════════════════════════════════════════════════════════════ */
+/* ── stage node alignment ────────────────────────────────────────────────
+   The orbs did not line up, and the connectors did not meet them.
+
+   Three causes, all in dino-world.css:
+     · .path-row is align-items:center, so each node is centred by its OWN
+       height. A node whose label wraps to two lines is taller, so its orb
+       floats off the line its neighbours sit on.
+     · boss orbs are 80px against everyone else's 68px, which moves their
+       centre by 6px on top of that.
+     · .path-connector is centred in the row too, so it lands below the orb
+       centres rather than through them.
+
+   Fix: anchor every node to the TOP of the row, give every orb the same
+   size (a boss is already a heavier ring in this system, not a bigger one),
+   and drop the connector onto the orb's centre line with a calc. Anything
+   below the orb — labels, pips, reward badges — can now vary freely
+   without moving anything. */
+/* --orb-boss is the tallest thing in a row, so it sets the slot every orb is
+   centred in. That is what lets a boss be visibly bigger without knocking the
+   row out of alignment. --node-w must always clear --orb-boss + 2×--node-pad. */
+:root{--orb:68px;--orb-boss:86px;--node-w:106px;--node-pad:8px}
+@media (max-width:900px){:root{--orb:58px;--orb-boss:74px;--node-w:92px;--node-pad:8px}}
+@media (max-width:700px){:root{--orb:52px;--orb-boss:66px;--node-w:82px;--node-pad:7px}}
+@media (max-width:560px){:root{--orb:46px;--orb-boss:58px;--node-w:72px;--node-pad:6px}}
+@media (max-width:440px){:root{--orb:42px;--orb-boss:52px;--node-w:64px;--node-pad:5px}}
+@media (max-width:380px){:root{--orb:38px;--orb-boss:48px;--node-w:58px;--node-pad:4px}}
+@media (max-width:340px){:root{--orb:34px;--orb-boss:44px;--node-w:52px;--node-pad:3px}}
+
+/* buildMap() used to set this row's layout with inline cssText, which no
+   media query could reach. It carries .path-row now and the layout is here. */
+.path-row{
+  display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-start;
+  width:100%;gap:0;
+}
+.slide-stages{gap:8px;width:100%;max-width:100%}
+.stage-node{
+  width:var(--node-w);
+  padding:var(--node-pad);
+  /* nothing inside a node may push past its own box — this is what was
+     making the badges overlap their neighbours */
+  min-width:0;overflow:hidden;
+}
+/* Every orb sits in a slot as tall as the biggest one. A regular orb is
+   nudged down by half the difference, so its CENTRE lands exactly where a
+   boss orb's centre does — the row stays on one line and the boss is still
+   plainly the bigger thing. */
+.sn-orb{
+  width:var(--orb);height:var(--orb);flex-shrink:0;
+  /* the margin goes on BOTH sides: top centres the orb in the slot, bottom
+     makes every slot the same total height so the labels underneath start on
+     one line too — otherwise the boss's name hangs lower than the rest */
+  margin-top:calc((var(--orb-boss) - var(--orb)) / 2);
+  margin-bottom:calc((var(--orb-boss) - var(--orb)) / 2);
+}
+.sn-boss5 .sn-orb,
+.sn-boss10 .sn-orb{
+  width:var(--orb-boss);height:var(--orb-boss);
+  margin-top:0;margin-bottom:0;border-width:3px;
+}
+.sn-boss5 .sn-num,.sn-boss10 .sn-num{font-size:clamp(8px,calc(.14 * var(--orb-boss)),12px)}
+.sn-num{font-size:clamp(7px,calc(.15 * var(--orb)),10px)}
+.sn-label{
+  max-width:100%;
+  font-family:var(--vt);font-weight:700;font-size:9.5px;line-height:1.35;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--dim2);
+  overflow-wrap:anywhere;
+  /* reserve two lines so a one-word name and a two-word name push the pips
+     below them down by the same amount */
+  min-height:2.7em;
+}
+.sn-done .sn-label{color:var(--dim)}
+.sn-active .sn-label{color:var(--accent)}
+/* below 440 the node interior is too narrow for a two-word name at 9.5px —
+   the type comes down a step so the longest name still fits the two lines */
+@media (max-width:440px){ .sn-label{font-size:9px;letter-spacing:.05em} }
+@media (max-width:380px){ .sn-label{font-size:8.5px;letter-spacing:.03em} }
+@media (max-width:340px){ .sn-label{font-size:8px;letter-spacing:.02em} }
+.path-connector{
+  align-self:flex-start;
+  margin-top:calc(var(--node-pad) + var(--orb-boss) / 2 - 1.5px);
+}
+/* the pips row was adding height only to the nodes that have it */
+.sn-pips{min-height:8px;justify-content:center;flex-wrap:wrap;max-width:100%}
+/* five 8px pips plus gaps need 52px, more than the node interior below 440 */
+@media (max-width:440px){
+  .sn-pips{gap:2px}
+  .pip{width:6px;height:6px}
+}
+/* the badge is nowrap in dino-world.css, so it ran straight out of the node.
+   It wraps now, and on a phone it is the first thing to go — the orb and the
+   name are what you navigate by. */
+.reward-badge{
+  white-space:normal;max-width:100%;text-align:center;line-height:1.35;
+  padding:2px 6px;
+}
+@media (max-width:900px){ .reward-badge{display:none} }
+
+.sn-orb{
+  background:var(--panel2);border:2px solid var(--border);
+  box-shadow:none;
+}
+.stage-node:not(.locked):hover .sn-orb{filter:none;border-color:var(--border2);transform:scale(1.06)}
+.sn-done .sn-orb{background:rgba(91,255,158,.08);border-color:var(--good);box-shadow:none}
+.sn-done .sn-num{color:var(--good)}
+.sn-active .sn-orb{
+  background:rgba(255,211,78,.10);border-color:var(--accent);
+  box-shadow:0 0 0 4px rgba(255,211,78,.10);animation:none;
+}
+.sn-active .sn-num{color:var(--accent)}
+.sn-locked .sn-orb{border-color:var(--border)}
+.sn-locked .sn-num{color:var(--dim2)}
+/* boss = thicker ring, dashed while locked */
+.sn-boss5 .sn-orb,.sn-boss10 .sn-orb{
+  border-width:3px;border-color:var(--border2);background:var(--panel2);
+}
+.sn-boss5.sn-locked .sn-orb,.sn-boss10.sn-locked .sn-orb{border-style:dashed}
+.sn-boss5.sn-done .sn-orb,.sn-boss10.sn-done .sn-orb{border-color:var(--good)}
+.sn-boss5.sn-active .sn-orb,.sn-boss10.sn-active .sn-orb{border-color:var(--accent)}
+.sn-icon{color:var(--dim)}
+
+.path-connector{background:var(--border)}
+.path-connector.done{background:var(--dim2)}
+.path-connector.boss{background:var(--border2)}
+.reward-badge{background:var(--panel2);border:1px solid var(--border);color:var(--dim2)}
+
+.pip{background:var(--panel3);border:1px solid var(--border)}
+.pip.p-done{background:var(--dim2);border-color:var(--dim2)}
+.pip.p-cur{background:var(--accent);border-color:var(--accent);animation:none}
+
+.sl-bubble{background:var(--panel2);border:1px solid var(--border);color:var(--dim2)}
+.sl-bubble:hover:not(.sl-locked){filter:none;border-color:var(--border2);color:var(--text)}
+.sl-bubble.sl-done{background:rgba(91,255,158,.08);border-color:var(--good);color:var(--good)}
+.sl-bubble.sl-cur{background:rgba(255,211,78,.10);border-color:var(--accent);color:var(--accent);animation:none}
+
+.map-nav{
+  background:var(--panel2);border:1px solid var(--border2);color:var(--dim);
+  border-radius:var(--r2);font-size:13px;
+}
+.map-nav:hover{filter:none;border-color:var(--accent);color:var(--accent)}
+.map-nav i,.map-nav svg{width:20px;height:20px;stroke-width:2;margin:0}
+.map-dots{background:var(--panel);border-top:1px solid var(--border)}
+.map-dot{width:9px;height:9px;background:var(--panel2);border:1px solid var(--border2)}
+.map-dot.active{background:var(--accent);border-color:var(--accent);transform:none}
+
+.soon-wrap{background:var(--panel);border:1px dashed var(--border)}
+.soon-orb{border:2px dashed var(--border2);background:var(--panel2);color:var(--dim2)}
+
+/* ── map top bar below the desktop breakpoint ────────────────────────────
+   Three stacked rows instead of a ragged wrap:
+       1 · title, alone and centred
+       2 · the stat strip
+       3 · every control, centred, on the bottom
+   Each row is flex:1 1 100%, so the controls in between are the only things
+   that share a line, and .map-topbar's justify-content centres them. */
+.map-title-txt{display:block}
+
+@media (max-width:900px){
+  .map-topbar{
+    flex-wrap:wrap;justify-content:center;align-items:center;
+    row-gap:8px;column-gap:8px;padding:10px 12px;min-height:0;
+  }
+  .map-title-txt{
+    order:1;flex:1 1 100%;width:100%;
+    position:static;transform:none;margin:0;
+    text-align:center;pointer-events:auto;
+  }
+  .map-attr-row{
+    order:2;flex:1 1 100%;width:100%;margin:0;gap:6px;
+    justify-content:space-between;
+    border-top:1px solid var(--border);
+    border-bottom:1px solid var(--border);
+    padding:6px 2px;
+  }
+  /* the controls, in a deliberate sequence rather than DOM accident */
+  #attr-bar.attr-bar{order:3;margin:0;flex:0 0 auto}
+  .map-topbar #timer-toggle-btn{order:4;margin:0;flex:0 0 auto}
+  #w2-serifs{order:5;margin:0;flex:0 0 auto}
+  .map-topbar .pbtn.sm{order:6;margin:0;flex:0 0 auto}
+  /* the expanded ATTR panel hangs off the bar, so it must clear all of it */
+  #attr-bar .ab-body{top:calc(100% + 8px);right:auto;left:50%;transform:translateX(-50%)}
+}
+
+@media (max-width:640px){
+  .map-title-txt{font-size:10px}
+  .map-attr-row{font-size:11.5px;gap:4px}
+}
+@media (max-width:420px){
+  .map-title-txt{font-size:9px;letter-spacing:.02em}
+  .map-attr-row{font-size:11px;gap:3px}
+  .map-topbar{padding:9px 10px;column-gap:6px}
+  #attr-bar .ab-body{left:6px;right:6px;transform:none;width:auto}
+}
+@media (max-width:340px){
+  .map-title-txt{font-size:8px}
+  .map-attr-row{font-size:10.5px}
+}
+
+/* the slide must never scroll sideways — a horizontal scroll here competes
+   with the swipe handler in dino-world.js for the same gesture */
+.map-slide{overflow-x:hidden;overflow-y:auto;padding:18px 12px;max-width:100%}
+/* the stages stay vertically centred in the slide at every width */
+.map-slide{justify-content:center}
+.map-slider-wrap{overflow:hidden;max-width:100%}
+.map-track{max-width:100%}
+@media (max-width:640px){ .map-slide{padding:14px 8px;gap:12px} }
+.sublevel-row{gap:6px;flex-wrap:wrap;justify-content:center;max-width:100%}
+.sl-bubble{width:38px;height:38px;flex-shrink:0}
+@media (max-width:640px){ .sl-bubble{width:34px;height:34px} }
+@media (max-width:420px){ .sl-bubble{width:32px;height:32px} }
+
+
+/* ═══ §11 · END + LEADERBOARD ═════════════════════════════════════════════ */
+.end-stats{background:var(--panel);border:1px solid var(--border);border-radius:var(--r3);
+  box-shadow:0 20px 50px rgba(0,0,0,.5)}
+.end-win-banner{background:var(--panel2);border:1px solid var(--border);color:var(--dim);border-radius:var(--r2)}
+.end-bonus{color:var(--good);font-size:10.5px}
+.end-score-hero{color:var(--accent);text-shadow:none;font-size:28px}
+.end-stat-card{background:var(--panel2);border:1px solid var(--border);border-radius:var(--r1)}
+.end-diff-tag{border:1px solid var(--border);color:var(--dim2)}
+
+.lb-tab{
+  background:var(--panel2);border:1px solid var(--border);color:var(--dim2);
+  border-radius:var(--r2);font-family:var(--vt);font-weight:700;
+  font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;min-height:44px;
+}
+.lb-tab:hover{border-color:var(--border2);color:var(--text)}
+.lb-tab.active{border-color:var(--accent);color:var(--accent);background:rgba(255,211,78,.08);box-shadow:none}
+.lb-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2)}
+.lb-card.r1{border-color:rgba(255,211,78,.45);box-shadow:none}
+.lb-card.r2{border-color:var(--border2)}
+.lb-card.r3{border-color:var(--border)}
+.lb-rank{color:var(--dim2)}
+.lb-card.r1 .lb-rank{color:var(--accent)}
+.lb-score{color:var(--accent)}
+.lb-mode.timed{color:var(--dim2);border-color:var(--border)}
+.lb-mode.chill{color:var(--dim2);border-color:var(--border)}
+.lb-pu{background:var(--panel2);border-radius:var(--r1)}
+
+.aw-gains{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2)}
+.aw-row{background:var(--panel2);border:1px solid var(--border);border-left:3px solid var(--border2);border-radius:0 var(--r1) var(--r1) 0}
+.aw-row.aw-hp{border-left-color:var(--good)}
+.aw-row.aw-hp .aw-val{color:var(--good)}
+.aw-row.aw-atk{border-left-color:var(--accent)}
+.aw-row.aw-atk .aw-val{color:var(--accent)}
+.aw-row.aw-res{border-left-color:var(--dim2)}
+.aw-row.aw-res .aw-val{color:var(--dim)}
+.aw-row.aw-heal{border-left-color:var(--good)}
+.aw-row.aw-heal .aw-val{color:var(--good)}
+.aw-row.aw-big{border-left-color:var(--accent);background:rgba(255,211,78,.06)}
+.aw-val{color:var(--good)}
+
+
+/* ═══ §12 · MODALS + STREAK + SYLLABUS ════════════════════════════════════ */
+.streak-count{color:var(--accent);text-shadow:none;font-size:24px}
+.sd-cell{background:var(--panel2);border:1px solid var(--border);border-radius:var(--r1)}
+.sd-cell.claimed{background:rgba(91,255,158,.08);border-color:var(--good)}
+.sd-cell.claimed .sd-day{color:var(--good)}
+.sd-cell.today{background:rgba(255,211,78,.10);border-color:var(--accent);animation:none;transform:none}
+.sd-cell.today .sd-day{color:var(--accent)}
+.reward-pop{background:var(--panel2);border:1px solid var(--good);color:var(--good)}
+
+.syl-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r3)}
+.syl-eyebrow{color:var(--dim2)}
+.syl-sub{font-size:12.5px;color:var(--dim);line-height:1.6}
+.syl-subj-card{background:var(--panel2);border:1px solid var(--border);border-radius:var(--r2)}
+.syl-subj-card:hover{border-color:var(--border2);transform:none}
+.syl-subj-meta{font-size:11px;color:var(--dim2)}
+.syl-dropzone{background:var(--panel2);border:1px dashed var(--border);border-radius:var(--r2)}
+.syl-dz-title{font-size:13px;color:var(--text)}
+.syl-file-types span{font-size:10px;color:var(--dim2);border-color:var(--border);
+  font-weight:700;letter-spacing:.1em}
+.syl-or{font-size:11px;color:var(--dim2);letter-spacing:.1em}
+.syl-file-row{background:var(--panel2);border:1px solid var(--border);border-radius:var(--r2)}
+.syl-filename{font-size:12.5px}
+.syl-filesize{font-size:11px;color:var(--dim2)}
+.syl-pill.busy{color:var(--dim);border-color:var(--border2)}
+.syl-pill.ok{color:var(--good);border-color:var(--good)}
+.syl-pill.err{color:var(--bad);border-color:var(--bad)}
+.syl-progress-track{background:var(--panel2);border:1px solid var(--border)}
+.syl-progress-meta{font-size:11px;color:var(--dim2)}
+.syl-err-box{background:rgba(255,92,114,.07);border:1px solid var(--bad);border-radius:var(--r2)}
+.syl-err-title{font-size:10.5px;color:var(--bad)}
+.syl-err-body{font-size:12px;color:var(--dim)}
+.syl-scan-stage{background:var(--panel2);border:1px solid var(--border);border-radius:var(--r2)}
+.syl-doc{background:var(--panel);border:1px solid var(--border)}
+.syl-scan-step{font-size:12px;color:var(--dim2)}
+.syl-scan-step.active{color:var(--text)}
+.syl-topic-row{background:var(--panel2);border:1px solid var(--border);border-radius:var(--r2);min-height:44px}
+.syl-topic-name{font-size:12.5px}
+.syl-topic-count{font-size:10.5px;color:var(--dim2)}
+.syl-summary-strip{font-size:12px;color:var(--dim2);border-top:1px solid var(--border)}
+.syl-practice-hero{background:var(--panel2);border:1px solid var(--border);border-radius:var(--r2)}
+
+/* intro guide */
+.ig-flow-step{background:var(--panel2);border:1px solid var(--border);border-radius:var(--r2)}
+.ig-flow-num{color:var(--accent);border:1px solid var(--accent)}
+.ig-flow-text{font-size:12.5px}
+.ig-flow-text b{color:var(--accent)}
+.ig-world-chip{background:var(--panel2);border:1px solid var(--border);border-radius:var(--r2)}
+.ig-callout{background:rgba(255,211,78,.06);border:1px solid rgba(255,211,78,.28);color:var(--accent);font-size:12px}
+.ig-step-list li{font-size:12.5px}
+.ig-step-list b,.ig-step-dot{color:var(--accent)}
+.ig-cmp-table td{font-size:12px}
+.ig-vs-bar{background:#08080F;border:1px solid var(--border2)}
+.ig-vs-mid{color:var(--border2)}
+
+
+/* ═══ §13 · MOTION ════════════════════════════════════════════════════════
+   The existing rule only covered battle FX. These are the ones that run
+   constantly on the map and home screens.
+   ════════════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.001ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.001ms!important;
+    scroll-behavior:auto!important;
+  }
+  .title-dino,.title-dino::before,.title-dino::after,
+  .sn-active .sn-orb,.pip.p-cur,.sl-bubble.sl-cur,.hsp.today,
+  .sd-cell.today,.guardian-chip,.revive-slot.armed,
+  .world-label.wl-11,.world-label.wl-end{animation:none!important}
+}
+
+
+/* ═══ §14 · MARKUP UTILITIES ═══════════════════════════════════════════════
+   Everything in this section exists to take a `style="…"` attribute OFF the
+   markup. Inline styles beat every selector and every media query short of
+   !important, so each one was a place where a responsive fix could fail
+   silently — three of them did during the phone pass. The rule is now:
+   dino.html carries structure and classes, stylesheets carry appearance.
+
+   The only inline styles left in the markup after this section are:
+     • style="display:none"  — initial visibility that JS toggles
+     • #p-hp / #b-hp         — width AND background are written by dino.js
+                               on every HP change (dino.js ~2081)
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ── modal frame sizes ─────────────────────────────────────────────────── */
+.modal-box.mb-340{max-width:340px}
+.modal-box.mb-420{max-width:420px}
+.modal-box.mb-560{max-width:560px}
+.modal-box.mb-600{max-width:600px}
+
+/* ── stacks & spans ────────────────────────────────────────────────────── */
+.u-stack{width:100%;display:flex;flex-direction:column}
+.u-gap-6{gap:6px}
+.u-gap-8{gap:8px}
+.u-full{width:100%}
+.u-flex1{flex:1 1 0;min-width:0}   /* `flex:1` is 1 1 0%, not 1 1 auto — auto made paired buttons unequal */
+
+/* the scrolling bodies of the two long modals */
+.u-scroll{width:100%;overflow-y:auto;-webkit-overflow-scrolling:touch}
+#pu-guide-list.u-scroll{max-height:60vh}
+#ach-list.u-scroll{max-height:62vh}
+
+/* ── battle top bar ────────────────────────────────────────────────────── */
+/* dino.css keyed a wrap rule off `div[style*="display:flex"]` inside
+   .gtb-core; that div is .gtb-stack now, so the rule is restated here. */
+.gtb-stack{display:flex;flex-direction:column;gap:1px;flex-wrap:wrap;row-gap:2px}
+.gtb-tag.gtb-score{color:var(--accent)}
+/* the effects strip runs as a wrapping row, not the column .effect-rows
+   defaults to elsewhere */
+#effect-rows{
+  flex-direction:row;flex-wrap:wrap;gap:3px;
+  align-items:center;min-height:18px;
+}
+/* sprite anchors — absolutely-positioned FX inside need a containing block */
+#player-spr,#boss-spr{position:relative}
+
+/* ── icon sizing that used to ride on the <i> element ──────────────────── */
+/* lucide copies the placeholder's attributes onto the <svg> it swaps in,
+   so every one of these has to match both the pre- and post-swap node. */
+.home-card-lbl i,.home-card-lbl svg{width:12px;height:12px;vertical-align:-2px}
+.pu-header i,.pu-header svg{vertical-align:-2px}
+.gtb-lbl i,.gtb-lbl svg{vertical-align:-1px}
+.lb-title i,.lb-title svg{width:16px;height:16px;vertical-align:-3px}
+.home-extra-btn.syl-cta i,.home-extra-btn.syl-cta svg{
+  width:13px;height:13px;vertical-align:-2px;margin-right:6px;
+}
+
+/* ── syllabus flow ─────────────────────────────────────────────────────── */
+.syl-eyebrow.eb-bad{color:var(--bad)}
+.syl-eyebrow.eb-good{color:var(--good)}
+
+/* ── practice modal preview card ───────────────────────────────────────── */
+#practice-preview{
+  width:100%;display:flex;align-items:center;gap:10px;
+  background:var(--panel2);border:1px solid var(--border);
+  border-radius:var(--r2);padding:8px 10px;
+}
+
+/* ── how-to-play body ──────────────────────────────────────────────────── */
+#intro-body{gap:12px}
+
+/* ── the same trap, JS side ────────────────────────────────────────────────
+   dino.js used to write element.style.color / .background / .cssText in four
+   places. Those are inline styles too — equally unreachable by a media query,
+   and the two on buttons silently killed :hover. The JS now toggles these
+   classes instead and writes only genuinely dynamic values.
+   ──────────────────────────────────────────────────────────────────────── */
+
+/* timer toggle — TIMED is the state worth marking, CHILL is the resting one */
+.tt-on{color:var(--accent);border-color:var(--accent)}
+.tt-off{color:var(--dim);border-color:var(--border2)}
+
+/* end-screen title: five tones, one accent between them */
+.end-title i,.end-title svg{width:20px;height:20px;vertical-align:-4px}
+.et-authored{color:var(--text)}
+.et-win{color:var(--accent)}
+.et-loss{color:var(--bad)}
+.et-glitch,.et-unwritten{color:var(--dim)}
+.et-glitch i,.et-glitch svg,.et-unwritten i,.et-unwritten svg{color:var(--dim2)}
+
+/* ORACLE marks the right answer and dims the rest */
+.choice.choice-oracle{
+  border-color:var(--accent);
+  background:rgba(255,211,78,.12);
+  color:var(--text);
+}
+.choice.choice-faded{opacity:.4}
+
+/* active-effect chips — layout is fixed, only --fx-hue comes from JS */
+.fx-chip{
+  display:inline-flex;align-items:center;gap:3px;
+  background:var(--panel2);
+  border:1px solid var(--fx-hue,var(--border2));
+  border-radius:var(--r1);
+  padding:1px 5px;
+  font-size:11px;
+  color:var(--fx-hue,var(--dim));
+}
+
+/* ── generated markup: the same classes, for HTML built in dino.js ────────
+   dino.js writes most of the screens as template strings, so its inline
+   styles were the larger half of the problem — and the worst of them were
+   font sizes inside #intro-body, which is exactly where text was breaking
+   mid-word on phones: an inline 15px/19px beats the 12.5px this file sets
+   at ≤520. These sizes are fluid now, so the guide narrows with the screen.
+   What is deliberately still inline in dino.js is only a text colour on a
+   <span>/<b> (semantic emphasis, no layout effect) or a genuinely dynamic
+   value — a bar width, a per-powerup hue, a disabled state.
+   ──────────────────────────────────────────────────────────────────────── */
+
+.u-row-8{display:flex;gap:8px;width:100%}
+.u-mt-4{margin-top:4px}
+
+/* how-to-play typography */
+.ig-lede{
+  font-size:clamp(12.5px,3.4vw,15px);
+  color:var(--text);line-height:1.6;text-align:center;
+}
+.ig-plain{
+  font-size:clamp(13px,4vw,19px);
+  color:var(--text);line-height:1.6;text-align:center;padding:6px;
+}
+.ig-sub{
+  font-size:clamp(12px,3.2vw,14px);
+  color:var(--dim);line-height:1.5;
+}
+.ig-step-list{margin-top:6px}
+
+/* battle topbar attributes — .attr-lbl is already sized in §5 above; the
+   inline 13px was what kept that rule from ever applying. */
+.attr-row i,.attr-row svg{width:13px;height:13px}
+/* .fx-none is already styled at §? above (11.5px italic) — that rule was
+   simply unreachable while the inline font-size existed. */
+
+/* icons whose size belongs to the thing that contains them */
+.lb-tab i,.lb-tab svg{width:12px;height:12px;vertical-align:-2px}
+.home-empty-cta i,.home-empty-cta svg{width:13px;height:13px;vertical-align:-2px}
+.home-stat-divider i,.home-stat-divider svg{width:11px;height:11px;vertical-align:-2px}
+
+/* award screen: the running-total row */
+.aw-row.aw-totals-row{
+  border-left-color:var(--accent);
+  background:rgba(255,211,78,.06);
+}
+.aw-row.aw-totals-row .aw-text,
+.aw-row.aw-totals-row .aw-val{color:var(--accent)}
+
+/* world-preview threat block */
+.wp-threat{
+  margin-top:8px;padding:8px 10px;
+  border:1px solid var(--border);border-radius:var(--r2);
+  background:rgba(0,0,0,.28);
+  font-size:12px;line-height:1.5;
+}
+.wp-threat-lbl{
+  font-family:var(--px);font-size:7px;color:var(--bad);
+  letter-spacing:1px;margin-bottom:5px;
+}
+
+/* syllabus: empty topic list */
+.syl-topics-empty{color:var(--dim);font-size:13px;text-align:center;padding:14px}
+
+
+/* ═══ §16 · ACTIVE EFFECTS · THE DEX HEADER ═══════════════════════════════ */
+
+/* ── the ACTIVE EFFECTS card was hiding effects ──────────────────────────
+   Two rules combined against it. dino.css pinned the topbar to
+   `flex-wrap:nowrap` below 1024 and capped this card at `max-width:220px`,
+   so seven cards fought over 900px and the effects card settled at ~130px.
+   `#effect-rows` then stacked its chips into a narrow column under a
+   `max-height:46px` cap — measured: five effects need 92px, so THREE of the
+   five were simply not on screen, scrollable inside a box too small to show
+   a scrollbar. Let the bar wrap and give the chips room.
+   ──────────────────────────────────────────────────────────────────────── */
+#effect-rows{
+  /* three rows of chips before it ever has to scroll — more effects than the
+     game can actually apply at once */
+  max-height:66px;
+}
+.gtb-extra{max-width:none}
+/* Bounded at BOTH ends. Below 641 dino.css hides the effects card and pins the
+   bar to one nowrap row of two cards plus QUIT — reaching into that with these
+   flex bases wrapped the phone topbar onto a second line and pushed the battle
+   tip 45px further down. This is the tablet band only. */
+@media (min-width:641px) and (max-width:1024px){
+  /* seven cards do not fit on one line here; wrapping is what stops the
+     effects card from being squeezed to nothing. The bases are tuned so the
+     bar settles into two or three rows rather than one card per row. */
+  .g-topbar{flex-wrap:wrap}
+  .gtb-core{flex:1 1 150px;min-width:130px}
+  .gtb-extra{flex:1 1 150px;min-width:130px;max-width:none}
+  .gtb-extra.grow{flex:3 1 280px}   /* the effects card gets the lion's share */
+}
+
+/* ── the DinoDex header ──────────────────────────────────────────────────
+   `.dx-close{margin-left:auto}` in a wrapping row means the button lands
+   wherever the logo and the SEEN/MASTERED/OF line leave it — at 360px and
+   below that is its own line, shoved to the right under the stat text, which
+   is the "placed weird". Give the header an explicit two-row shape on
+   phones instead of letting it wrap by accident.
+   ──────────────────────────────────────────────────────────────────────── */
+@media (max-width:560px){
+  .dx-head{gap:7px 9px;align-items:center}
+  .dx-logo{order:1;flex:0 0 auto}
+  .dx-close{order:2;margin-left:auto;flex:0 0 auto}
+  .dx-stat{order:3;flex:1 1 100%;width:100%}
+  .dx-note{order:4}
+  /* still a 40px tap target, just not 85px wide for the word CLOSE */
+  .dx-close{padding:0 11px;letter-spacing:.08em}
+}
+@media (max-width:380px){
+  .dx-head{padding:8px 10px}
+  .dx-close{padding:0 9px;font-size:10px}
+}
+
+
+/* ═══ §17 · THE FIGHTER STATUS ROW ════════════════════════════════════════
+   The small icons above YOU / the enemy — SHIELD, POISONED, BURNED, STUNNED.
+
+   They were positioned on the text baseline: `luc()` wrote an inline
+   `vertical-align:-3px`, and `.f-status` is a fixed 16-18px box with
+   `overflow:hidden`. Where the baseline actually falls depends on the font
+   the browser has, so with Space Mono loaded the glyph sat low enough that
+   the bottom was sliced off — the BURNED flame lost its whole base.
+
+   Nothing here reads a baseline. `font-size:0` removes the line box, the
+   icon is a block, and both axes are centred by flexbox, so the row renders
+   the same whichever font arrives (or doesn't).
+   ════════════════════════════════════════════════════════════════════════ */
+.f-status{
+  align-items:center;
+  justify-content:center;
+  /* the height stays fixed so the sprite below never shifts, but there is
+     nothing left to clip: four icons at 15px + gaps is 69px of a 140px row */
+  overflow:visible;
+  line-height:1;
+}
+.f-status .sicon{
+  display:inline-flex;align-items:center;justify-content:center;
+  flex:0 0 auto;
+  font-size:0;line-height:1;          /* no text, so no line box to fall out of */
+}
+.f-status .sicon i,
+.f-status .sicon svg{
+  width:15px;height:15px;
+  display:block;                       /* out of inline layout entirely */
+  vertical-align:top;                  /* belt and braces if it ever isn't */
+  flex:0 0 auto;stroke-width:2.2;
+}
+@media (max-width:640px){
+  /* dino.css shortens the row to 16px here; 14px icons keep a pixel of air */
+  .f-status .sicon i,.f-status .sicon svg{width:14px;height:14px}
+}
+
+
+/* ═══ §18 · THE BATTLE SCREEN ON A LAPTOP ═════════════════════════════════
+   Measured before touching anything, at 1920×1080:
+
+     arena     320px   a fixed height that never grew
+     choices   481px   four answers in a box that soaked up the surplus
+     sidebar   280px wide, 136px used  →  863px of empty column
+
+   Two independent causes. `.battle` carried a hard pixel height per
+   breakpoint, so it could not take free space; everything left over went to
+   `.q-panel{flex:1}`, whose `.choices` scroller then held a screenful of
+   nothing under four buttons. And `.g-inv` was `align-self:stretch`, so it
+   reserved a full-height strip for a handful of powerups.
+
+   Now the arena is the flexible one and the question panel takes only what
+   it needs, while the inventory is a rail that ends where its contents do.
+   ════════════════════════════════════════════════════════════════════════ */
+@media (min-width:961px){
+  /* The arena is sized by its WIDTH, not by leftover height. The backdrop is
+     a wide landscape with the fighters standing at the bottom, so letting it
+     eat every spare pixel just grew the empty sky — 692px of it at 1080p.
+     An aspect ratio keeps the scene in proportion at any window, and
+     flex-shrink lets it give ground the moment the question needs the room. */
+  .battle{
+    height:auto;
+    /* grow hard — the arena claims the surplus first, up to its cap, and the
+       flex algorithm then hands whatever is left to the question panel. An
+       even split gave the panel too much because its basis is its content
+       while the arena's is nothing. */
+    flex:12 1 auto;
+    min-height:240px;
+    /* the cap follows the WIDTH so the scene keeps its proportions — the
+       subtrahend is the rail plus gutters. Letting it fill the height instead
+       grew 692px of empty sky at 1080p over fighters who stand at the bottom. */
+    max-height:min(calc((100vw - 190px) / 2.96), 430px);
+  }
+  /* The question panel takes what is left and centres its block inside it, so
+     the surplus reads as room around the question instead of a hole under
+     the tip. .choices sizes to its rows rather than stretching to fill. */
+  .q-panel{flex:1 1 auto;min-height:0;justify-content:center}
+  .choices{flex:0 1 auto;min-height:0}
+
+  /* ── the inventory rail ────────────────────────────────────────────────
+     `align-self:flex-start` is the whole fix for the empty column: the rail
+     now ends at its last powerup. */
+  .g-inv{
+    width:128px;
+    align-self:flex-start;
+    max-height:none;
+    overflow:visible;
+    padding-right:0;
+  }
+  .pu-panel{padding:7px}
+  .pu-items{grid-template-columns:1fr;gap:5px}
+  /* one per row, so the icon and the name sit side by side rather than
+     stacked — half the height for the same information */
+  .pu-btn{
+    flex-direction:row;align-items:center;justify-content:flex-start;
+    gap:8px;padding:8px 9px;text-align:left;
+  }
+  .pu-btn .pu-icon{flex:0 0 auto}
+  .pu-btn .pu-icon i,.pu-btn .pu-icon svg{width:17px;height:17px}
+  .pu-btn .pu-name{
+    flex:1 1 auto;min-width:0;text-align:left;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .pu-btn .pu-count{top:3px;right:5px}
+  .revive-slot{padding:6px 8px}
+
+  /* Past the margin the rail also carries USES, PAGES WRITTEN and the six
+     reactive chips. Those need real width, so it widens only when the HUD is
+     actually on — dino-world2.js already sets this class. */
+  body.w2-hud-on .g-inv{width:214px}
+  body.w2-hud-on .pu-items{grid-template-columns:1fr 1fr}
+  body.w2-hud-on .pu-btn{
+    flex-direction:column;align-items:center;justify-content:center;
+    gap:4px;padding:9px 5px;text-align:center;
+  }
+  body.w2-hud-on .pu-btn .pu-name{text-align:center;white-space:normal}
+}
+
+/* the large-desktop block in dino.css pinned the arena to 320px and the rail
+   to 280px with a three-across grid — all three are what §18 replaces */
+@media (min-width:1400px){
+  .battle{height:auto;min-height:280px}
+  .g-inv{width:136px}
+  .pu-items{grid-template-columns:1fr}
+  body.w2-hud-on .g-inv{width:232px}
+  body.w2-hud-on .pu-items{grid-template-columns:1fr 1fr}
+}
+/* short laptops: the arena still flexes, it just flexes between smaller bounds */
+/* short laptops: the same rules, a lower floor so the question always fits */
+@media (min-width:961px) and (max-height:760px){
+  .battle{height:auto;min-height:190px}
+}
+@media (min-width:961px) and (max-height:660px){
+  .battle{height:auto;min-height:150px}
+}
+
+
+/* ═══ §19 · PICK CARDS — CENTRED AT ANY COUNT ═════════════════════════════
+   A mid-battle reward offers three cards into a four-column grid, so the
+   fourth column sat empty and the group read as shifted left with something
+   missing from the end of the row. Flex-wrap with a computed equal width
+   fixes it for every count: the cards keep one size, and a short last row
+   centres itself instead of hugging the left edge.
+   ════════════════════════════════════════════════════════════════════════ */
+.pu-pick-cards{
+  display:flex;flex-wrap:wrap;
+  justify-content:center;align-items:stretch;
+  gap:9px;
+}
+.pu-pick-card{
+  flex:0 0 auto;
+  width:calc((100% - 9px) / 2);          /* two up */
+}
+@media (min-width:561px){
+  .pu-pick-cards{gap:10px}
+  .pu-pick-card{width:calc((100% - 20px) / 3)}
+}
+@media (min-width:861px){
+  .pu-pick-cards{gap:12px}
+  .pu-pick-card{width:calc((100% - 36px) / 4)}
+}
+/* the two-column orphan rule was a grid trick; flex centres it instead */
+.pu-pick-cards>.pu-pick-card:last-child:nth-child(odd){grid-column:auto}
+
+
+/* ═══ §20 · HARD MODE ON A PHONE ══════════════════════════════════════════
+   Hard asks six answers instead of four — about 58px more — and the phone
+   battle screen was already scrolling. The tip row is 47px, and a player on
+   hard is past needing it, so it stands down.
+
+   The exception is past the margin: `#hint-bar` is also where the USES /
+   PAGES HUD re-parents itself on a phone, so when that is on, the row stays
+   (already tip-less — dino-world2.css hides the tip text in that state).
+
+   960px is the game's layout breakpoint — where the inventory stops being a
+   side rail and becomes a bottom row — and using it here meant an 820x1180
+   tablet counted as a phone. A screen with 1180px of height is not short of
+   47px. The hide is for screens that are actually narrow; short screens of
+   any width are handled separately in §37, which is the rule that knows
+   about height.
+   ════════════════════════════════════════════════════════════════════════ */
+@media (max-width:640px){
+  body.diff-hard:not(.w2-hud-on) #hint-bar{display:none}
+}
+
+
+/* ═══ §21 · A BIG LOADOUT IN THE RAIL ═════════════════════════════════════
+   §18 gave the rail `align-self:flex-start` so it would stop at its content
+   instead of reserving 863px for four powerups. Correct for a run — and wrong
+   for Training, which hands you the whole era's kit. Twenty-one powerups made
+   a 1103px rail on a 780px screen: eight buttons simply off the bottom of the
+   window, with nothing to scroll because the overflow was `visible`.
+
+   It still hugs its content; it just stops at the height it actually has.
+   ════════════════════════════════════════════════════════════════════════ */
+@media (min-width:961px){
+  .g-inv{
+    max-height:100%;
+    overflow-y:auto;overflow-x:hidden;
+    scrollbar-width:thin;
+  }
+  .g-inv::-webkit-scrollbar{width:6px}
+  .g-inv::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+  /* Past eight, a single stack is a long scroll for no reason — go two-across
+     and widen. dino.js sets .inv-many from the size of the loadout. */
+  .g-inv.inv-many{width:206px}
+  .g-inv.inv-many .pu-items{grid-template-columns:1fr 1fr}
+  .g-inv.inv-many .pu-btn{
+    flex-direction:column;align-items:center;justify-content:center;
+    gap:3px;padding:7px 4px;text-align:center;
+  }
+  .g-inv.inv-many .pu-btn .pu-name{text-align:center;white-space:normal;font-size:8px;line-height:1.35}
+  .g-inv.inv-many .pu-btn .pu-icon i,.g-inv.inv-many .pu-btn .pu-icon svg{width:16px;height:16px}
+  /* the HUD widening from §18 already covers this width, so don't stack them */
+  body.w2-hud-on .g-inv.inv-many{width:232px}
+}
+@media (min-width:1400px){
+  .g-inv.inv-many{width:222px}
+  .g-inv.inv-many .pu-items{grid-template-columns:1fr 1fr}
+}
+
+
+/* ═══ §22 · CURRENT STAGE, OFF ON HARD ════════════════════════════════════
+   Same trade as the tip row in §20: hard asks six answers, and the stage line
+   is reference text the player has already read on the map. It buys back its
+   row so the answers fit. The turn indicator and the message bar stay — those
+   change every turn.
+   ════════════════════════════════════════════════════════════════════════ */
+@media (max-width:640px){
+  body.diff-hard .stage-box{display:none}
+}
+
+/* 375×667 lands 7px short of fitting on hard — worth closing, and cheap: a
+   little less air inside the question panel, on hard only, so nothing about
+   medium changes. */
+@media (max-width:640px){
+  body.diff-hard .q-panel{padding-top:7px;padding-bottom:7px;gap:6px}
+  body.diff-hard .choices{gap:4px}
+  body.diff-hard .q-text{padding:2px}
+}
+
+
+/* ═══ §23 · THE ENEMY CARD ════════════════════════════════════════════════
+   Measured: `#pp-boss` wanted 330px inside a 132px card, and the part that
+   lost was the enemy's NAME — clipped by 44px, so "Celestial Shield" read as
+   "Celes…" while five unreadable −90% chips took the room.
+
+   The name gets the width now and the resistances become graded pips: what
+   matters mid-fight is which statuses are blunted and roughly how badly, and
+   weight carries that faster than digits. The figure lives on hover and in
+   the DinoDex, where there is room to read it.
+   ════════════════════════════════════════════════════════════════════════ */
+#pp-boss{
+  display:flex;flex-direction:column;align-items:flex-start;
+  gap:3px;flex-wrap:nowrap;
+  white-space:normal;overflow:visible;text-overflow:clip;
+  line-height:1.35;
+}
+#pp-boss .pp-name{
+  flex:0 0 auto;width:100%;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  color:var(--text);
+}
+.pp-resrow{display:flex;align-items:center;gap:6px;min-width:0;max-width:100%}
+.pp-reslbl{
+  font-family:var(--vt);font-weight:700;font-size:8.5px;letter-spacing:.16em;
+  color:var(--dim2);flex:0 0 auto;
+}
+.pp-reslist{display:flex;align-items:center;gap:3px;flex-wrap:wrap;min-width:0}
+
+/* one pip per status — the icon only, weighted by how much it blunts */
+.pp-res{
+  flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
+  width:19px;height:19px;padding:0;border-radius:var(--r1);
+  font-size:11px;line-height:1;
+  background:var(--panel2);border:1px solid var(--border);
+  cursor:help;position:relative;
+  transition:border-color .14s,background .14s,opacity .14s;
+}
+.pp-res:hover{border-color:var(--border2);background:var(--panel3)}
+/* weak — barely resisted, so barely marked */
+.pp-res.r1{opacity:.5}
+/* medium */
+.pp-res.r2{opacity:.78;border-color:var(--border2)}
+/* strong — 70% or more of the effect is gone */
+.pp-res.r3{
+  opacity:1;border-color:var(--dim2);background:var(--panel3);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.04);
+}
+/* immune — struck through, the one place this card uses the bad colour */
+.pp-res.imm{
+  opacity:1;border-color:var(--bad);
+  background:rgba(255,92,114,.10);
+}
+.pp-res.imm::after{
+  content:'';position:absolute;left:2px;right:2px;top:50%;
+  height:1.5px;background:var(--bad);transform:rotate(-24deg);
+  border-radius:1px;
+}
+/* the card is a link into the DinoDex — say so on the label, not with an emoji */
+.gtb.pp-card{cursor:pointer;transition:border-color .15s}
+.gtb.pp-card:hover{border-color:var(--accent)}
+.gtb.pp-card .gtb-lbl::after{content:none}
+.gtb.pp-card .gtb-lbl{display:flex;align-items:center;gap:5px}
+.gtb.pp-card .gtb-lbl::before{
+  content:'';width:3px;height:3px;border-radius:50%;
+  background:var(--dim2);flex:0 0 auto;
+}
+.gtb.pp-card:hover .gtb-lbl::before{background:var(--accent)}
+
+/* the card needs a little more room than a plain stat card now */
+@media (min-width:961px){
+  .gtb-extra:has(#pp-boss){flex:1 1 210px;min-width:190px}
+}
+@media (max-width:960px){
+  .pp-res{width:17px;height:17px;font-size:10px}
+  .pp-reslbl{font-size:8px;letter-spacing:.12em}
+}
+
+/* ═══ §24 · THE RESULTS CARDS GROW WITH THEIR NUMBER ══════════════════════
+   The four cards sat in `repeat(4,1fr)` — four equal columns — so every value
+   got the same width whatever it was. At the end of a full run that is
+   "S51-L1", "6.5m", "+1.0m" and "540" all crammed into a quarter each, and the
+   long ones were the ones that mattered.
+
+   `auto` tracks size to their content first and share what is left over, so a
+   card holding a long number simply takes more of the row and the short ones
+   give it up. Nothing is clipped and nothing wraps. */
+#s-end .end-stat-grid{
+  grid-template-columns:repeat(2,minmax(0,auto));
+  justify-content:center;
+  max-width:100%;                  /* auto tracks must not push past the panel */
+  column-gap:6px;                  /* the room the widest card borrows */
+}
+@media (min-width:420px),(max-height:680px){
+  #s-end .end-stat-grid{grid-template-columns:repeat(4,minmax(0,auto))}
+}
+#s-end .end-stat-card{min-width:0;padding-inline:5px}
+#s-end .es-val{
+  white-space:nowrap;              /* the grid gives it room; it never wraps */
+  font-variant-numeric:tabular-nums;
+  overflow:visible;
+}
+#s-end .es-lbl{white-space:nowrap}
+
+/* ═══ §25 · THE ATTACK CONNECTS, AND ONLY THE SPRITE MOVES ════════════════
+   .aR / .aL / .aS used to be applied to the whole .fighter column, so the
+   name, status icons, guardian badges, HP bar and HP text all lunged with the
+   dino — an attack read as the card twitching. doAnim() now targets
+   #player-spr / #boss-spr instead, and these keyframes replace the old fixed
+   26px hop with `--lunge`, which doAnim measures from the real distance
+   between the two sprites. They meet in the middle and stop where they touch.
+
+   The wind-up before the strike and the overshoot after it are what sell a
+   poke rather than a slide; the strike frame also tips the sprite forward. */
+/* 0.46s read as a twitch even once the sprites reached each other — a strike
+   that fast has no wind-up you can see. 0.95s is two hits per question, so it
+   costs about a second an answer; that is the trade for it looking like a
+   blow. doAnim's timeout and the hardened fuse move with it or the class is
+   stripped mid-animation. */
+.aR{animation:pokeR .95s cubic-bezier(.3,1.4,.45,1)}
+.aL{animation:pokeL .95s cubic-bezier(.3,1.4,.45,1)}
+/* The flinch used to be .8s and, worse, was fired only AFTER the lunge had
+   finished and the attacker was home again — so a hit was one motion, a
+   pause, then a separate unexplained wobble. It now starts on the strike
+   frame (see strike() in dino.js) and has to be short enough to finish with
+   the lunge instead of trailing a third of a second behind it. */
+.aS{animation:hurtKnock .48s cubic-bezier(.2,.9,.3,1)}
+/* A dodge is not an attack. The enemy dodging used to play `aL` — its own
+   attack lunge — while the player's counter-lunge was still running, which
+   is both fighters attacking at once. This is a sidestep instead. */
+.aD{animation:dodgeSlip .42s cubic-bezier(.3,.9,.3,1)}
+#player-spr{--knock:-1}                 /* knocked back away from the enemy */
+#boss-spr{--knock:1}
+#player-spr,#boss-spr{will-change:transform}
+
+@keyframes pokeR{
+  0%  {transform:translateX(0) scale(1) rotate(0)}
+  16% {transform:translateX(calc(var(--lunge,26px) * -.14)) scale(.95) rotate(-3deg)}
+  46% {transform:translateX(var(--lunge,26px)) scale(1.06) rotate(7deg)}
+  58% {transform:translateX(calc(var(--lunge,26px) * .88)) scale(1.02) rotate(4deg)}
+  100%{transform:translateX(0) scale(1) rotate(0)}
+}
+@keyframes pokeL{
+  0%  {transform:translateX(0) scale(1) rotate(0)}
+  16% {transform:translateX(calc(var(--lunge,26px) * .14)) scale(.95) rotate(3deg)}
+  46% {transform:translateX(calc(var(--lunge,26px) * -1)) scale(1.06) rotate(-7deg)}
+  58% {transform:translateX(calc(var(--lunge,26px) * -.88)) scale(1.02) rotate(-4deg)}
+  100%{transform:translateX(0) scale(1) rotate(0)}
+}
+/* the recoil goes AWAY from whoever hit you, then settles — not a symmetric
+   jitter, which reads as vibration rather than as being struck */
+@keyframes hurtKnock{
+  0%  {transform:translate(0,0) rotate(0)}
+  14% {transform:translate(calc(var(--knock,-1) * 11px),-4px) rotate(calc(var(--knock,-1) * -6deg))}
+  34% {transform:translate(calc(var(--knock,-1) * 6px),1px) rotate(calc(var(--knock,-1) * -3deg))}
+  56% {transform:translate(calc(var(--knock,-1) * 3px),-1px) rotate(0)}
+  78% {transform:translate(calc(var(--knock,-1) * 1px),0) rotate(0)}
+  100%{transform:translate(0,0) rotate(0)}
+}
+/* slips away from the attacker (--knock already points that way), thins out
+   at the apex, and comes back — reads as "not there" rather than as a hit */
+@keyframes dodgeSlip{
+  0%  {transform:translate(0,0) skewX(0);opacity:1}
+  30% {transform:translate(calc(var(--knock,-1) * 15px),-3px) skewX(calc(var(--knock,-1) * -7deg));opacity:.45}
+  55% {transform:translate(calc(var(--knock,-1) * 17px),-1px) skewX(calc(var(--knock,-1) * -4deg));opacity:.55}
+  100%{transform:translate(0,0) skewX(0);opacity:1}
+}
+@media (prefers-reduced-motion:reduce){
+  .aR,.aL,.aS,.aD{animation:none}
+}
+
+/* ═══ §26 · THE RESULTS PANEL ON A LAPTOP ═════════════════════════════════
+   `.end-stats` carried a flat `max-width:320px` at every width. On a 1280
+   laptop that left 480px empty on each side and squeezed the four stat cards
+   to 54-72px — narrower than the SAME cards on a 390px phone, which get
+   81-102px. The phone was the only place the panel was the right size.
+
+   The cap now scales with the room available. Layout is unchanged; there is
+   simply more of it. */
+/* The height gates were `min-height:640` and `min-height:700`. A 1366x768
+   laptop does NOT give the page 768px — Chrome's chrome, tab strip and
+   bookmarks bar take 110-140px, leaving about 625px. So on the most ordinary
+   laptop there is, both gates failed and the panel dropped all the way back to
+   the 320px phone cap on a 1366px screen, with the four cards squeezed to 56px
+   and every label spilling over its neighbour.
+
+   The gates exist to keep this layout away from a PHONE ON ITS SIDE, which is
+   wide enough to match `min-width:700` but only ~390px tall. That needs a
+   floor of about 480, not 640. */
+@media (min-width:700px) and (min-height:480px){
+  #s-end .end-stats{max-width:600px;padding:26px 30px}
+  /* Content-sized `auto` tracks are right on a phone, where a long number has
+     to be able to borrow width from a short one. On a laptop there is more
+     room than the four values need, and auto tracks leave the slack sitting
+     between them — which is the empty space this section is here to remove.
+     Equal columns instead: every card fills its quarter. */
+  #s-end .end-stat-grid{grid-template-columns:repeat(4,minmax(0,1fr));column-gap:12px;row-gap:12px}
+  #s-end .end-stat-card{padding:14px 16px;gap:5px}
+  #s-end .es-icon{font-size:22px}
+  #s-end .es-val{font-size:15px}
+  #s-end .es-lbl{font-size:11px}
+  #s-end .end-score-hero{font-size:44px}
+  #s-end .end-win-banner{font-size:15px;padding:14px 18px}
+}
+@media (min-width:1100px) and (min-height:560px){
+  #s-end .end-stats{max-width:680px}
+  #s-end .es-val{font-size:16px}
+  #s-end .end-score-hero{font-size:52px}
+}
+/* A label may never paint over the card next to it again. Press Start 2P
+   advances a full em per character, so a label nobody measured in the real
+   face is one word away from spilling; an ellipsis is a bad look but a
+   readable one, and it is what a `nowrap` label should have had from the
+   start. The `title` keeps the full text reachable. */
+#s-end .es-lbl{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+
+/* ═══ §27 · THE SCORE CANNOT COLLIDE WITH THE STREAK ══════════════════════
+   `.gtb-core` is `flex:1 1 0`, so the SCORE/STREAK cell will shrink to
+   nothing. `.sc-row` inside it had a fixed 10px gap, no wrap, and no
+   `min-width:0` on its children — and its children are Press Start 2P, which
+   cannot shrink below its glyphs. So once the cell narrowed past the text the
+   score simply overflowed and sat on top of STK.
+
+   This is a font-metric bug and it does not reproduce anywhere Press Start 2P
+   fails to load, which is why it looked fine in testing and wrong on the real
+   machine. The fix does not tune a gap: the row is allowed to WRAP, and the
+   score is given its own full-width track when it does, so the collision is
+   impossible at any glyph width. */
+.sc-row{flex-wrap:wrap;row-gap:2px;min-width:0}
+.sc-row>*{min-width:0}
+.gtb-core:has(.sc-row){flex:1 1 auto;min-width:0}
+.sc-row .gtb-score{flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* The first version of this went further and forced `flex:1 0 100%` on the
+   score below 960px, so on a phone the score ALWAYS took its own line and
+   STK/combo always dropped underneath it. That is not a collision fix, it is
+   a two-line scoreboard — and it cost a line of vertical space on the device
+   with the least of it, every question, whether or not anything was close to
+   overlapping. Reverted.
+
+   What actually prevents the overlap is above: the row may wrap, the items
+   may shrink, and the score ellipsises rather than overflowing its box. On a
+   phone all three still fit on one line at real Press Start 2P metrics; if a
+   longer score ever stops fitting, the row wraps then, not always. */
+@media (max-width:960px){
+  .sc-row{gap:8px}
+}
+
+/* ═══ §28 · THE ENEMY CARD GIVES THE SCOREBOARD ITS ROOM BACK ═════════════
+   Measured in the top bar at 1366: ENEMY PASSIVE & RES rendered 362px, the
+   widest cell on the row — wider than ACTIVE EFFECTS at 302px and more than
+   twice SCORE/STREAK at 174px. #pp-boss alone wanted 330px.
+
+   §23 gave the enemy name the full width of its card, which was right when
+   the card was being clipped; on a wide screen it lets the card grow instead.
+   Bound it, and shrink the resistance pips to match. */
+@media (min-width:961px){
+  .gtb-extra:has(#pp-boss){flex:0 1 236px;min-width:170px;max-width:236px}
+  #pp-boss .pp-name{font-size:12px}
+  .pp-res{width:16px;height:16px;font-size:9.5px}
+  .pp-resrow{gap:4px}
+  .pp-reslist{gap:2px}
+  .pp-reslbl{font-size:8px;letter-spacing:.12em}
+  /* the room that frees goes to the two cells that were starved */
+  .gtb-core:has(.sc-row){flex:1 1 210px}
+}
+
+/* ═══ §29 · THE GUARD RAIL, AND USES BESIDE IT ════════════════════════════
+   GUARD was a bare label followed by six plain names. Nothing on screen said
+   what any of them answered — that lived in a title attribute — and the rule
+   that decides the fight was not shown at all: REACTIVE_CAP is 2, so however
+   many are armed, only two can ever fire in one battle.
+
+   It is one panel now, with USES in the same frame rather than in a separate
+   box below it: both are budgets, both are spent as the fight runs, and a
+   player checking one is checking the other. Each guard states what it is
+   waiting for, and the cap reads as pips the same way USES does. */
+#w2-hud.on{
+  gap:0;background:var(--panel2);border:1px solid var(--border);
+  border-radius:var(--r2);padding:0;overflow:hidden;
+}
+.pu-panel #w2-hud.on{margin-top:auto}
+#w2-reactive,#w2-budget,#w2-pages{
+  margin:0;border:0;border-radius:0;background:transparent;
+}
+#w2-reactive+#w2-budget,#w2-reactive+#w2-pages,#w2-budget+#w2-pages{
+  border-top:1px solid var(--border);
+}
+#w2-reactive{padding:7px 9px 8px}
+#w2-budget{padding:7px 9px}
+#w2-budget .w2-ghead{margin-bottom:0}
+#w2-pages{padding:7px 9px}
+
+.w2-ghead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.w2-gcap{display:inline-flex;align-items:center;gap:4px;cursor:help}
+.w2-gcap b{
+  font-family:var(--vt);font-size:9px;font-weight:700;letter-spacing:.08em;
+  color:var(--dim2);font-variant-numeric:tabular-nums;
+}
+.w2-gpip{
+  width:7px;height:7px;border-radius:50%;display:inline-block;
+  background:var(--accent);
+}
+.w2-gpip-out{background:transparent;border:1px solid var(--border2)}
+
+.w2-glist{display:flex;flex-wrap:wrap;gap:4px}
+.w2-rc{
+  display:inline-flex;flex-direction:column;gap:1px;align-items:flex-start;
+  border:1px solid var(--border2);border-radius:var(--r1);
+  padding:3px 7px;white-space:nowrap;
+  transition:color .2s,border-color .2s,background .2s,opacity .2s;
+  text-decoration:none;                    /* the strike-through moves to the name */
+}
+.w2-rc-n{
+  font-family:var(--vt);font-weight:700;font-size:9px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--text);
+}
+.w2-rc-w{
+  font-style:normal;font-size:8.5px;letter-spacing:.03em;
+  color:var(--dim2);text-transform:none;
+}
+.w2-rc.fired{
+  color:var(--accent);border-color:var(--accent);background:rgba(255,211,78,.12);
+}
+.w2-rc.fired .w2-rc-n,.w2-rc.fired .w2-rc-w{color:var(--accent)}
+.w2-rc.spent{opacity:.42}
+.w2-rc.spent .w2-rc-n{text-decoration:line-through}
+.w2-rc.spent .w2-rc-w{font-style:italic}
+
+/* (the phone layout for this rail was rewritten — see §34) */
+
+/* ═══ §30 · THE RESULTS PANEL, TIDIED ═════════════════════════════════════
+   §24 gave the four stat cards `auto` tracks so a long number could borrow
+   width from a short one. On a laptop, where §26 puts all four on one row,
+   that is right. On a phone, where they fall into a 2x2, it is not: the two
+   columns came out 102px and 81px, the rows did not line up with each other,
+   and 69px of the panel sat empty to the right of them. Four cards showing
+   four numbers should read as a block, not as a ragged pile.
+
+   Two even columns that use the whole width. The numbers are already short
+   (fmtScore) and every card keeps its full-value tooltip, so there is
+   nothing left for the `auto` track to rescue. */
+@media (max-width:419px){
+  #s-end .end-stat-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    column-gap:8px;row-gap:8px;
+    width:100%;
+  }
+  #s-end .end-stat-card{padding-inline:8px}
+}
+/* A phone on its side is 700-plus wide but barely 400 tall. The old rule fired
+   the four-across layout on `max-height:680px` alone, which also caught a
+   PORTRAIT phone on a short viewport and squeezed four cards into 320px.
+   Four across needs width, not a lack of height. */
+@media (max-height:680px) and (max-width:419px){
+  #s-end .end-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+/* "ENTER YOUR NAME" with no name field under it.
+   applyTrainingEndUI() hides the input and the SAVE SCORE button on a
+   training run, because a training run cannot be ranked — but the label
+   introducing them stayed, so the results screen ended with a heading for
+   something that was not there. The JS now hides the label with them; this
+   is the belt to that braces, for any other path that hides the input. */
+#s-end .end-actions:not(:has(#name-in:not([style*="display: none"]))) .name-label{display:none}
+
+/* ═══ §31 · SCORE ON TOP, STREAK UNDER IT ═════════════════════════════════
+   The cell stays exactly where it is; only its contents are re-stacked. The
+   score is the number you watch, so it gets the first line to itself and the
+   full width of the cell; STK and the combo share the second.
+
+   This is a deliberate two-line arrangement, not the accidental one §27 used
+   to produce: there the score was forced full-width only below 960px and the
+   second line inherited an 8px flex gap meant for a single row, so STK and
+   the multiplier sat at an odd distance and the block drifted. Here both
+   lines start at the same left edge at every width, the row gap is set for a
+   stack, and the cell reads label / score / streak — the same three-row shape
+   as STAGE & ENEMY beside it. */
+.sc-row{align-items:baseline;column-gap:9px;row-gap:3px}
+.sc-row .gtb-score{flex:1 0 100%;margin:0}
+.sc-row .sc-sub{flex:0 0 auto}
+@media (max-width:960px){
+  .sc-row{column-gap:8px;row-gap:2px}
+}
+
+/* ═══ §32 · THE TOP BAR LABEL THAT DID NOT FIT ════════════════════════════
+   "STAGE & ENEMY" is 13 characters of Press Start 2P. On a 390px phone the
+   cell holding it is ~150px, so the label was hard-clipped by 38px — 53px at
+   360px — and read "STAGE &". It only looked fine in testing because Press
+   Start 2P is blocked in the sandbox and the fallback is ~40% narrower.
+
+   The cell already shows the stage code and the enemy's name on the two lines
+   underneath, so the second half of the label was never carrying anything.
+   One word fits, and says the same thing. */
+@media (max-width:520px){
+  .gtb:has(#g-stage) .gtb-lbl{font-size:0;letter-spacing:0}
+  .gtb:has(#g-stage) .gtb-lbl::after{
+    content:"STAGE";font-size:6px;letter-spacing:1px;
+  }
+}
+
+/* ═══ §33 · THE TOP BAR IS THE SAME HEIGHT IN EVERY WORLD ═════════════════
+   The stage cell prints the enemy's name, and enemy names grow with the
+   worlds: "Leaf Gecko" is 10 characters, "THE POINT OF NO RETURN" is 22. In a
+   ~110px cell on a phone that is six wrapped lines instead of one, so the bar
+   was 76px in one world and 107px in another — the arena and the answers slid
+   down the screen depending on who you were fighting.
+
+   The name is already printed over the enemy's own sprite in the arena, so
+   the copy up here is a reminder, not the record. One line, ellipsised. */
+#g-stage{white-space:nowrap}
+.gtb-stack{min-width:0}
+#g-boss-name{
+  display:block;min-width:0;max-width:100%;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+
+/* ═══ §34 · GUARD AND USES, REBUILT FOR THE ROW THEY GET ══════════════════
+   §29 put GUARD and USES in one panel, which was right, but it built each
+   guard as a bordered two-line card. Six of those is a bag of chips: on the
+   desktop rail they wrap into a ragged block, and on a phone — where
+   placeHUD() moves the whole thing into #hint-bar, taking the TIP's single
+   row — they overran the screen by up to 54px, so the last guards were simply
+   cut off the right edge.
+
+   Desktop: a list, not chips. One guard per row, name on the left, what it is
+   waiting for on the right, so the column reads top-to-bottom like the status
+   readout it is.
+
+   Phone: no borders, no icons, no second line. The header and the names share
+   a line and wrap as text, which is what they always were. */
+.w2-glist{display:flex;flex-direction:column;gap:0}
+.w2-rc{
+  flex-direction:row;align-items:baseline;justify-content:space-between;
+  gap:10px;border:0;border-radius:0;padding:3px 0;
+  border-bottom:1px solid var(--rule,var(--border));
+}
+.w2-rc:last-child{border-bottom:0}
+.w2-rc-n{display:inline-flex;align-items:baseline;gap:5px;flex:0 0 auto}
+.w2-rc-ic{font-size:11px;line-height:1;flex:0 0 auto}
+/* the name is the identity and never truncates; the watch text is the part
+   that gives way. `flex:0 0 auto` here meant it could not shrink, so instead
+   of ellipsising it ran straight out of the 216px rail and was cut mid-word
+   ("buffs stripp", "max HP lo"). */
+.w2-rc-w{
+  flex:0 1 auto;min-width:0;text-align:right;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.w2-rc.fired{background:rgba(255,211,78,.12);border-radius:var(--r1);
+  padding-inline:5px;border-bottom-color:transparent}
+
+@media (max-width:960px){
+  /* one row of #hint-bar, on the narrowest screen the game runs on */
+  /* min-width:0 is the whole fix for the sideways spill. #w2-hud is a flex
+     item in #hint-bar, and a flex item's automatic minimum size is its
+     MIN-CONTENT width — which, with six nowrap guard names inside, is wider
+     than the phone. Without this it refuses to shrink and the last guards are
+     cut off the right edge; with it the names wrap instead. */
+  #hint-bar #w2-hud.on{
+    border:0;background:transparent;padding:0;
+    flex:1 1 auto;min-width:0;width:100%;
+    /* dino-world2.css lays this out as a nowrap flex ROW in #hint-bar, so
+       GUARD and USES fought over one 310px line: GUARD took 232px and USES
+       was squeezed to 70px with its "3/3" hanging 24px off the right edge of
+       the screen. There is no width where both fit side by side on a phone.
+       They stack. */
+    flex-direction:column;align-items:stretch;gap:2px;
+  }
+  #hint-bar #w2-reactive,#hint-bar #w2-budget,#hint-bar #w2-pages{
+    border:0;padding:1px 0;
+  }
+  #hint-bar #w2-reactive{
+    display:flex;flex-wrap:wrap;align-items:baseline;gap:1px 8px;
+  }
+  #hint-bar .w2-ghead{margin:0;gap:5px;flex:0 0 auto}
+  #hint-bar .w2-glist{
+    flex-direction:row;flex-wrap:wrap;gap:1px 8px;
+    flex:1 1 0;min-width:0;
+  }
+  #hint-bar .w2-rc{
+    border:0;padding:0;background:none;gap:0;
+  }
+  #hint-bar .w2-rc.fired{padding-inline:0;background:none;color:var(--accent)}
+  /* six emoji are ~120px of a 344px row and the name already identifies the
+     guard; the second line was hidden here even before the rebuild */
+  #hint-bar .w2-rc-ic,#hint-bar .w2-rc-w{display:none}
+  #hint-bar .w2-rc-n{font-size:8px;letter-spacing:.05em}
+  /* GUARD's counter is pushed to the right edge by space-between, but USES'
+     header is a lone flex item inside a display:flex #w2-budget, so it sized
+     to its content and its count sat mid-row. The two are a column of budgets
+     and have to line up: same left edge for the labels, same right edge for
+     the counts. */
+  #hint-bar #w2-budget .w2-ghead,#hint-bar #w2-pages .w2-ghead{flex:1 1 auto}
+  #hint-bar .w2-gcap{gap:6px}
+}
+
+/* ═══ §35 · THE PHONE DOES NOT NEED TO BE TOLD TWICE ══════════════════════
+   §33 stopped the top bar growing by holding the enemy's name to one line —
+   but on a 390px phone the stage cell is ~110px, and "☀ THE OMEGA POINT"
+   ellipsises down to literally "…". A name reduced to three dots is worse
+   than no name: it takes a row and says nothing.
+
+   It is not lost. The arena prints "S50-L5: ☀ THE OMEGA POINT" across the top
+   of the battle box, directly above the enemy it names, at a size you can
+   actually read. Same for the CURRENT STAGE strip, which was still running
+   off the right edge at World 10 even after the numbers were shortened —
+   "OMEGA POINT — HP:40.34m ATK:1.19m–1.58m" is 38 characters of Press Start
+   2P, about 420px of a 344px row. Drop the half that is duplicated and the
+   numbers fit with room to spare. */
+@media (max-width:960px){
+  #g-boss-name{display:none}
+  .stage-box .si-name{display:none}
+  /* with the name gone the stage cell only has to hold "S50-L5", so it should
+     take exactly that and hand the rest of the row to the scoreboard — it was
+     `flex:1 1 0` and still clipping its own six characters */
+  .gtb-core:has(#g-stage){flex:0 0 auto;min-width:0}
+  .gtb-core:has(.sc-row){flex:1 1 auto;min-width:0}
+}
+
+/* ═══ §36 · THE QUESTION BOX IS A FIXED BOX ═══════════════════════════════
+   The question panel took its height from its contents, so a six-word
+   question and a forty-word one gave the arena above and the answers below
+   two different amounts of room. Every question moved the whole screen —
+   worst on a phone, where the panel is most of what you can see.
+
+   The box is a fixed height now and the TEXT gives way instead: fitQuestion()
+   in dino.js binary-searches the font size down until it fits. Same for the
+   answer buttons, on fixed grid rows. Nothing below the arena moves between
+   questions any more. */
+/* Sized from the worst case that still has to READ, not from the average.
+   A syllabus-generated question runs 200+ characters; at 390px that is about
+   seven lines, and seven lines at a readable size is ~100px. Anything past
+   that shrinks, and anything past the shrink floor scrolls inside the box —
+   the box never changes size and the text is never cut off. */
+/* Three lines of question, not four and a half. The first version of this
+   picked 96-112px out of the air: a four-word question then sat in 78px of
+   empty box, and on a phone the column added up to 780px inside a 640px
+   screen. §37 makes the column fit the viewport; these are the numbers that
+   leave the surplus to the arena instead of to a hole under the text. */
+/* The desktop box used to be 76px — three lines plus a half. Measured at
+   1024x768, 1280x800, 1440x900 and 1920x1000, that extra half-line bought
+   exactly 1px of font on the longest question in the bank (13px instead of
+   12px at 1024, 16 instead of 15 above it) and left a 58px hole under a
+   four-word one. It cost 10px of arena on the two sizes where the arena is
+   still height-limited. One pixel of font is not worth ten of stage, so the
+   box is three lines at every width and the surplus goes to the fight. */
+:root{
+  --qbox:66px;                     /* the question — three lines at 16px/1.35 */
+  --abox:56px;                     /* one row of answers */
+}
+@media (max-width:960px){ :root{--qbox:66px;--abox:52px} }
+@media (max-width:400px){ :root{--qbox:64px;--abox:50px} }
+@media (max-height:700px) and (min-width:961px){ :root{--qbox:66px;--abox:50px} }
+
+.q-text{
+  height:var(--qbox);
+  min-height:0;                    /* dino.css sets 44px; the box owns it now */
+  display:flex;align-items:center;justify-content:center;
+  /* the last resort, once fitQuestion has hit its floor: scroll, never clip */
+  overflow-y:auto;overflow-x:hidden;
+  line-height:1.35;
+  text-wrap:balance;
+  scrollbar-width:thin;
+}
+/* hard mode on a phone is already tight — §20 trims it, and the box follows */
+body.diff-hard .q-text{height:calc(var(--qbox) - 12px)}
+
+.choices{grid-auto-rows:var(--abox)}
+.choice{
+  overflow:hidden;
+  display:flex;align-items:center;gap:7px;
+  min-height:0;                    /* the row height is the row's job */
+  line-height:1.25;
+  white-space:normal;              /* two short lines beat one clipped one */
+}
+.choice .c-letter{flex:0 0 auto;align-self:center;line-height:1}
+/* six choices on Hard get shorter rows rather than a taller grid */
+.choices.six{grid-auto-rows:calc(var(--abox) - 6px)}
+
+@media (prefers-reduced-motion:reduce){
+  .q-text,.choice{transition:none}
+}
+
+
+/* ═══ §37 · THE WHOLE SCREEN, WITHOUT SCROLLING ═══════════════════════════
+   Measured on a phone in Medium: top bar 67 + arena 160 + status 107 +
+   question panel 334 + inventory 90 = a 780px column inside a 640-740px
+   screen. The page scrolled by 58-134px, which is the actual complaint —
+   a fixed question box does not help if the thing it sits in overflows.
+
+   So the column is told what it has. #s-game is the viewport; every band in
+   it is sized by its content EXCEPT the arena, which takes whatever is left
+   over. Spare space goes to the fight rather than to empty space under a
+   four-word question, and there is no arrangement of bands that can push the
+   bottom of the screen past the bottom of the phone.
+
+   `svh` rather than `vh`: a mobile browser's collapsing toolbar makes `vh`
+   taller than what you can actually see, which is its own scrollbar. */
+@media (max-width:960px){
+  #s-game{height:100svh;max-height:100svh;min-height:0;overflow:hidden}
+  .g-middle{flex:1 1 auto;min-height:0;overflow:hidden}
+  .g-main{
+    flex:1 1 auto;min-height:0;
+    display:flex;flex-direction:column;
+    /* the safety net: if a viewport ever defeats the arithmetic above, this
+       column scrolls rather than the content being cut off */
+    overflow-y:auto;overflow-x:hidden;
+  }
+  .g-topbar,.g-inv,.g-status,.q-panel,#hint-bar{flex:0 0 auto;min-height:0}
+  .battle{flex:1 1 auto;height:auto;min-height:104px}
+  .q-panel{overflow:hidden}
+}
+
+/* A short phone cannot afford the extras, whatever the difficulty. Hard mode
+   already stands the tip down on a narrow screen (§20) — below 720px of
+   height every difficulty needs the same, because the tip is the one band on
+   the screen that is never load-bearing.
+
+   Both conditions have to hold. A 1366x625 laptop is under 720px tall and
+   keeps its tip perfectly well, because at that width the inventory is a side
+   rail rather than a row under the question — the vertical budget is a
+   different shape entirely. */
+@media (max-width:960px) and (max-height:720px){
+  #hint-bar:not(:has(#w2-hud.on)){display:none}
+  .stage-box{display:none}
+}
+
+/* the same budget on a laptop: the arena absorbs, nothing overflows */
+@media (min-width:961px){
+  #s-game{max-height:100dvh;overflow:hidden}
+  .g-middle{min-height:0;overflow:hidden}
+  .g-main{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+  .g-main>.battle{flex:1 1 auto;min-height:150px}
+  .g-main>.g-status,.g-main>.q-panel,.g-main>#hint-bar{flex:0 0 auto;min-height:0}
+}
+
+/* ═══ §38 · HOW TO PLAY — A FIXED BOX ═════════════════════════════════════
+   The guide was eighteen pages of wildly different heights: a four-bullet
+   page and a page with a table and a flow diagram sized the modal to
+   themselves, so the box jumped and the BACK / NEXT buttons moved under your
+   thumb every time you turned a page. On a phone the buttons could end up
+   below the fold entirely.
+
+   One box, one size, for every page. The content scrolls inside it; the
+   title, the counter and the buttons never move. */
+.modal-box.intro-wide{
+  width:min(680px,94vw);
+  height:min(640px,86svh);
+  display:flex;flex-direction:column;gap:0;
+  padding:18px 0 14px;
+  overflow:hidden;
+  position:relative;
+}
+.modal-box.intro-wide>#intro-title{
+  flex:0 0 auto;margin:0 52px 2px 20px;text-align:left;
+  font-size:11px;line-height:1.7;
+}
+.modal-box.intro-wide>.intro-count{
+  flex:0 0 auto;margin:0 20px 10px;
+  font-family:var(--vt);font-size:10.5px;font-weight:700;letter-spacing:.14em;
+  color:var(--dim2);
+}
+.modal-box.intro-wide>#intro-body{
+  flex:1 1 auto;min-height:0;
+  overflow-y:auto;overflow-x:hidden;
+  padding:0 20px 4px;
+  /* the scroll is the box's, so give it a visible edge rather than letting
+     content appear to be cut off at the bottom */
+  mask-image:linear-gradient(to bottom,#000 calc(100% - 18px),transparent);
+  scrollbar-width:thin;
+}
+.modal-box.intro-wide>.ig-nav{
+  flex:0 0 auto;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin:0;padding:12px 20px 0;
+  border-top:1px solid var(--rule,var(--border));
+}
+.modal-box.intro-wide>.ig-nav .pbtn{flex:0 0 auto;min-width:104px;min-height:42px}
+.modal-box.intro-wide>.ig-nav #intro-dots{
+  flex:1 1 auto;display:flex;flex-wrap:wrap;gap:5px;
+  align-items:center;justify-content:center;min-width:0;
+}
+.modal-box.intro-wide>.ig-nav .pbtn:disabled{opacity:.35;pointer-events:none}
+.intro-skip{
+  position:absolute;top:14px;right:14px;z-index:2;
+  min-height:32px;padding:6px 11px;font-size:8px;
+}
+
+/* the ??? page — deliberately the quietest thing in the guide */
+.ig-unknown{
+  display:flex;flex-direction:column;align-items:center;gap:18px;
+  padding:26px 6px 10px;text-align:center;
+}
+.ig-unknown-mark{
+  font-family:var(--px);font-size:46px;line-height:1;
+  color:var(--border2);
+  text-shadow:0 0 34px rgba(255,255,255,.07);
+}
+.ig-unknown-body{max-width:46ch;display:flex;flex-direction:column;gap:13px}
+.ig-unknown-body p{margin:0;font-size:14px;line-height:1.65;color:var(--dim)}
+.ig-unknown-quiet{color:var(--faint,#5E5878);font-size:13px;font-style:italic}
+
+.ig-rev-demo .ig-vs-mid{font-size:15px;color:var(--dim2)}
+
+@media (max-width:520px){
+  .modal-box.intro-wide{height:min(620px,90svh);padding:14px 0 12px}
+  .modal-box.intro-wide>#intro-title{margin:0 48px 2px 14px;font-size:10px}
+  .modal-box.intro-wide>.intro-count{margin:0 14px 8px}
+  .modal-box.intro-wide>#intro-body{padding:0 14px 4px}
+  .modal-box.intro-wide>.ig-nav{padding:10px 14px 0;gap:8px}
+  .modal-box.intro-wide>.ig-nav .pbtn{min-width:82px;min-height:40px}
+  .ig-unknown-mark{font-size:36px}
+  .ig-unknown-body p{font-size:13px}
+}
