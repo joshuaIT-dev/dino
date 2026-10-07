@@ -1,0 +1,1 @@
+This is Dino, connected website to my project GABLE. This Dino project is inspired to the game "Bookworm Adventures of LEX" :D, our mission is to implement an education system whereas our focus is to motivate the current "Traditon" way of education on the students using the capabilities of the modern technology.
